@@ -7,7 +7,20 @@ services:
     restart: always
     ports:
       - 1972
-      - 52773
+      - 63077:52773
       - 53773
     volumes:
       - ./:/home/irisowner/dev
+    command: ["-a", "/home/irisowner/dev/iris_post_start_script.sh"]
+  
+  grafana:
+    image: grafana/grafana-oss
+    environment:
+      - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+      - DS_IRIS=be45rxg6i2bcwd
+    ports:
+      - 3000:3000
+    volumes:
+      #- ./grafana-storage:/var/lib/grafana
+      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources

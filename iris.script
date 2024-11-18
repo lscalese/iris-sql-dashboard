@@ -11,6 +11,11 @@
     do ##class(Security.Services).Modify("%Service_CallIn",.prop)
 
     zpm "install passwordless"
+    zpm "install swagger-ui"
+    
+    ; replace index.html of swagger-ui to open automatically our specification
+    Do:##class(%File).Exists("/home/irisowner/dev/web/swagger-ui/index.html") ##class(%File).CopyFile("/home/irisowner/dev/web/swagger-ui/index.html","/usr/irissys/csp/swagger-ui/index.html",1)
+    
     ; importing the source code of the repository as ZPM module
     zn "USER"
     zpm "load /home/irisowner/dev -v":1:1

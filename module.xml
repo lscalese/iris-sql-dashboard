@@ -1,12 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Export generator="Cache" version="25">
-  <Document name="objectscript-template.ZPM">
+  <Document name="sql-stats-api.ZPM">
     <Module>
-      <Name>objectscript-template</Name>
-      <Version>1.1.2</Version>
+      <Name>sql-stats-api</Name>
+      <Version>0.0.1</Version>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
-      <Resource Name="dc.sample.PKG"/>
+      <Resource Name="dc.sqlstats.PKG"/>
+      <CSPApplication 
+        SourcePath="/web"
+        DeployPath="${cspdir}/sqlstats/api"
+        Url="/csp/sqlstats/api" 
+        CookiePath="/csp/sqlstats/api/"
+        PasswordAuthEnabled="1"
+        AuthenticationMethods="32" 
+        Recurse="1"
+        MatchRoles=":%DB_${Namespace}"
+        DispatchClass="dc.sqlstats.rest.Main"/>
     </Module>
   </Document>
 </Export>

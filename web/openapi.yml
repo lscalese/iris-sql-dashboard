@@ -1,0 +1,139 @@
+openapi: 3.0.0
+info:
+  title: SQL Stats API
+  version: 1.0.0
+servers:
+  - url: http:///api
+paths:
+  /ping:
+    get:
+      summary: Ping the server
+      responses:
+        '200':
+          description: pong response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  timestamp:
+                    type: string
+                  version:
+                    type: string
+                  system:
+                    type: string
+                  hostname:
+                    type: string
+  /daily:
+    get:
+      summary: Get daily SQL stats
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Start date in yyyy-mm-dd format or epoch timestamp
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+          description: End date in yyyy-mm-dd format or epoch timestamp
+        - name: hash
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Hash of the SQL statement
+      responses:
+        '200':
+          description: Daily SQL stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SQLStatsDTO'
+        '400':
+          description: Invalid date format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /hourly:
+    get:
+      summary: Get hourly SQL stats
+      parameters:
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Start date in yyyy-mm-dd hh:mm:ss format or epoch timestamp
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+          description: End date in yyyy-mm-dd hh:mm:ss format or epoch timestamp
+        - name: hash
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Hash of the SQL statement
+      responses:
+        '200':
+          description: Hourly SQL stats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SQLStatsDTO'
+        '400':
+          description: Invalid date format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+components:
+  schemas:
+    SQLStatsDTO:
+      type: object
+      properties:
+        Statement:
+          type: string
+        Hash:
+          type: string
+        Count:
+          type: integer
+        ExecutionTime:
+          type: number
+        Variance:
+          type: number
+        AvgExecutionTime:
+          type: number
+        Commands:
+          type: integer
+        AvgCommands:
+          type: number
+        Date:
+          type: string
+        DateTime:
+          type: string
+        Hour:
+          type: integer

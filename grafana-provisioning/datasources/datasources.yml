@@ -1,0 +1,26 @@
+apiVersion: 1
+datasources:
+  - name: IRIS
+    uid: "be45rxg6i2bcwd"
+    orgId: 1
+    type: "yesoreyeram-infinity-datasource"
+    url: "http://iris:52773/csp/sqlstats/api"
+    basicAuth: true
+    basicAuthUser: "_system"
+    isDefault: true
+    jsonData:
+      allowedHosts:
+        - "http://iris:52773"
+      auth_method: "basicAuth"
+      customHealthCheckEnabled: true
+      customHealthCheckUrl: "/ping"
+      global_queries: []
+      oauthPassThru: false
+      refData:
+        - data: ""
+          name: "IRIS_JSON_DATA"
+      unsecuredQueryHandling: "allow"
+    readOnly: false
+    apiVersion: ""
+    secureJsonData:
+      basicAuthPassword: "SYS"
