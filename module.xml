@@ -17,6 +17,7 @@
         Recurse="1"
         MatchRoles=":%DB_${Namespace}"
         DispatchClass="dc.sqlstats.rest.Main"/>
+      <Invoke Class="dc.sqlstats.services.Install" Method="Init" Phase="Compile" When="After" CheckStatus="true"></Invoke>
     </Module>
   </Document>
 </Export>

@@ -8,7 +8,8 @@ XData UrlMap [ XMLNamespace = "http://www.intersystems.com/urlmap" ]
     <Route Url="/daily" Method="GET" Call="Daily"/>
     <Route Url="/hourly" Method="GET" Call="Hourly"/>
     <Route Url="/openapi" Method="GET" Call="GetOpenAPISpec"/>
-    <Route Url="/spec" Method="GET" Call="GetOpenAPISpec"/>
+    <Route Url="/_spec" Method="GET" Call="GetOpenAPISpec"/>
+    <Route Url="/namespaces" Method="GET" Call="GetListNamespaces"/>
 </Routes>
 }
 
@@ -20,7 +21,7 @@ ClassMethod Ping() As %Status
         "timestamp": ($ZDateTime($Horolog, 3)),
         "version": ($ZVersion),
         "system": ($SYSTEM.Version.SystemMode()),
-        "hostname":($SYSTEM.INetInfo.LocalHostName())
+        "hostname":(##class(%SYS.System).GetNodeName())
     }
     Do message.%ToJSON()
     Return $$$OK
@@ -61,6 +62,9 @@ ClassMethod Daily() As %Status
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
+    If $Get(%request.Data("namespace",1)) '= "" {
+        Set filter.namespace = $Get(%request.Data("namespace",1))
+    }
 
     Set stats = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
 
@@ -124,6 +128,9 @@ ClassMethod Hourly() As %Status
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
+    If $Get(%request.Data("namespace",1)) '= "" {
+        Set filter.namespace = $Get(%request.Data("namespace",1))
+    }
 
     Set stats = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
 
@@ -174,6 +181,22 @@ ClassMethod GetOpenAPISpec() As %Status
     Set gcs = ##class(%Stream.GlobalCharacter).%New()
     Do formatter.FormatToStream(spec, .gcs)
     Do gcs.OutputToDevice()
+
+    Return $$$OK
+}
+
+ClassMethod GetListNamespaces() As %Status
+{
+    Set %response.ContentType = "application/json"
+
+    Set list = ##class(dc.sqlstats.services.SQLStats).GetListNamespaces()
+
+    Set array = [], ptr = 0
+    While $ListNext(list, ptr, key) {
+        Do array.%Push(key)
+    }
+
+    Do array.%ToJSON()
 
     Return $$$OK
 }

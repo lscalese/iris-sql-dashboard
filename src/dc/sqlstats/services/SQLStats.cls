@@ -55,4 +55,16 @@ ClassMethod HourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %DynamicArr
     Return stats
 }
 
+ClassMethod GetListNamespaces() As %List
+{
+    Do ##class(%SYS.Namespace).ListAll(.result)
+    Set key = "", list = ""
+    For  {
+        Set key = $Order(result(key))
+        Quit:key=""
+        Set $List(list, * + 1) = key
+    }
+    Return list
+}
+
 }

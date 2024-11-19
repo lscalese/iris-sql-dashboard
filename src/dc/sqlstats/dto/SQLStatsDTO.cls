@@ -32,6 +32,16 @@ Property Date As %String;
 /// Hour of the day (ex : consider 8 is the range beteween 8 and 9)
 Property Hour As %Integer;
 
+/// Date and time in format yyyy-mm-dd hh:mm:ss
 Property DateTime As %String;
+
+/// The server name...
+Property ServerName As %String;
+
+/// IRIS instance name
+Property InstanceName As %String;
+
+/// Namespace of the SQL statement
+Property Namespace As %String;
 
 }

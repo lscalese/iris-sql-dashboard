@@ -48,6 +48,12 @@ paths:
           schema:
             type: string
           description: Hash of the SQL statement
+        - name: namespace
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Execution namespace
       responses:
         '200':
           description: Daily SQL stats
@@ -90,6 +96,12 @@ paths:
           schema:
             type: string
           description: Hash of the SQL statement
+        - name: namespace
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Execution namespace
       responses:
         '200':
           description: Hourly SQL stats
@@ -101,6 +113,29 @@ paths:
                   $ref: '#/components/schemas/SQLStatsDTO'
         '400':
           description: Invalid date format
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+  /namespaces:
+    get:
+      summary: Get list of namespaces
+      responses:
+        '200':
+          description: List of namespaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+        '500':
+          description: Internal server error
           content:
             application/json:
               schema:
@@ -137,3 +172,9 @@ components:
           type: string
         Hour:
           type: integer
+        Namespace:
+          type: string
+        ServerName:
+          type: string
+        InstanceName:
+          type: string
