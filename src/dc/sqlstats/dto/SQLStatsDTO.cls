@@ -44,4 +44,12 @@ Property InstanceName As %String;
 /// Namespace of the SQL statement
 Property Namespace As %String;
 
+/// The period of the statistics
+/// daily or hourly
+Property Period As %String;
+
+Property id As %String;
+
+Property RowCount As %Integer;
+
 }

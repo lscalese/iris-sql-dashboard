@@ -8,6 +8,8 @@ Make sure you have [git](https://git-scm.com/book/en/v2/Getting-Started-Installi
 
 ## Installation 
 
+### Docker
+
 Clone/git pull the repo into any local directory
 
 ```
@@ -26,3 +28,17 @@ docker compose build
 docker compose up -d
 ```
 
+### IRIS backend using zpm
+
+```
+zpm "install sql-stats-api"
+```
+
+### IRIS backend without zpm
+
+If you can't use zpm, import and compile `export.xml` and then execute the Init() method to setup iris requirement.  
+
+```
+Do $SYSTEM.OBJ.Load("<git-directory>/iris-sql-dashboard/export.xml", "ck")
+Do ##class(dc.sqlstats.services.Install).Init()
+```

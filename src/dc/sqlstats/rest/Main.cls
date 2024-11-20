@@ -85,7 +85,7 @@ ClassMethod Daily() As %Status
     //         "Hour": ""
     //     }
     // ]
-
+    s ^lsc = stats.%ToJSON()
     Set gcs = ##class(%Stream.GlobalCharacter).%New()
     Do stats.%ToJSON(.gcs)
     Do gcs.OutputToDevice()

@@ -15,10 +15,10 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfOb
             Set $NAMESPACE = filter.namespace
         }
 
-        Set args($Increment(args)) = filter.from
-        Set args($Increment(args)) = filter.to
+        Set args($Increment(args)) = $Piece(filter.from, " ", 1)
+        Set args($Increment(args)) = $Piece(filter.to, " ", 1)
 
-        Set sql = "SELECT t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands "
+        Set sql = "SELECT t1.ID, t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands, t1.StatVariance, t1.StatRowCount "
                     _ "FROM INFORMATION_SCHEMA.STATEMENT_DAILY_STATS t1 "
                     _ "INNER JOIN INFORMATION_SCHEMA.STATEMENTS t2 ON t1.Statement = t2.Hash "
                     _ "WHERE t1.Day >= ? AND t1.Day <= ?"
@@ -41,15 +41,16 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfOb
 
         While tRes.%Next() {
             Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.id = tRes.ID
             Set stat.Hash = tRes.Hash
             Set stat.Statement = tRes.Statement
             Set stat.Date = tRes.Day
             Set stat.Count = tRes.StatCount
             Set stat.ExecutionTime = tRes.StatTotal
             Set stat.Commands = tRes.StatCommands
+            Set stat.Variance = tRes.StatVariance
+            Set stat.RowCount = tRes.StatRowCount
             Set stat.Namespace = $Namespace
-            Set stat.ServerName = serverName
-            Set stat.InstanceName = instanceName
             Do stats.Insert(stat)
         }
     } Catch ex {
@@ -88,7 +89,7 @@ ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfO
         Set args($Increment(args)) = dayEnd
         Set args($Increment(args)) = endHour
 
-        Set sql = "SELECT Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, Day->Statement->Hash, Day->Statement->Statement "
+        Set sql = "SELECT ID, Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, StatVariance, StatRowCount, Day->Statement->Hash, Day->Statement->Statement "
                     _ "FROM INFORMATION_SCHEMA.STATEMENT_HOURLY_STATS "
                     _ "WHERE (Day->Day > ? OR (Day->Day = ? AND ""Hour"" >= ?)) "
                     _ "AND (Day->Day < ? OR (Day->Day = ? AND ""Hour"" <= ?)) "
@@ -107,10 +108,9 @@ ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfO
             $$$ThrowStatus(sc)
         }
 
-        Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
-
         While tRes.%Next() {
             Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.id = tRes.ID
             Set stat.Hash = tRes.Hash
             Set stat.Statement = tRes.Statement
             Set stat.Date = $ZDate(tRes.Day, 3)
@@ -118,9 +118,9 @@ ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfO
             Set stat.Count = tRes.StatCount
             Set stat.ExecutionTime = tRes.StatTotal
             Set stat.Commands = tRes.StatCommands
+            Set stat.Variance = tRes.StatVariance
             Set stat.Namespace = $Namespace
-            Set stat.ServerName = serverName
-            Set stat.InstanceName = instanceName
+            Set stat.RowCount = tRes.StatRowCount
             Do stats.Insert(stat)
         }
 

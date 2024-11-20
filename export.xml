@@ -1,0 +1,628 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-20 07:32:33">
+<Class name="dc.sqlstats.dao.SQLStatsDAO">
+<Super>%RegisteredObject</Super>
+<TimeChanged>67164,27150.098840922</TimeChanged>
+<TimeCreated>67163,63220.471087231</TimeCreated>
+
+<Method name="GetDailyStats">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
+<ReturnType>%ListOfObjects</ReturnType>
+<Implementation><![CDATA[
+    Set stats = ##class(%ListOfObjects).%New()
+
+        
+    Try {
+        New $ROLES
+        Set $ROLES = "%ALL"
+        
+        If $Namespace '= filter.namespace {
+            New $NAMESPACE
+            Set $NAMESPACE = filter.namespace
+        }
+
+        Set args($Increment(args)) = filter.from
+        Set args($Increment(args)) = filter.to
+
+        Set sql = "SELECT t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands "
+                    _ "FROM INFORMATION_SCHEMA.STATEMENT_DAILY_STATS t1 "
+                    _ "INNER JOIN INFORMATION_SCHEMA.STATEMENTS t2 ON t1.Statement = t2.Hash "
+                    _ "WHERE t1.Day >= ? AND t1.Day <= ?"
+        
+        If filter.hash '= "" {
+            Set sql = sql _ " AND t2.Hash = ?"
+            Set args($Increment(args)) = filter.hash
+        }
+
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tStatement.%SelectMode = 1
+        Set tRes = ##class(%SQL.Statement).%ExecDirect(.tStatement, sql, args...)
+
+        If tRes.%SQLCODE < 0 {
+            Set sc = $$$ERROR($$$SQLError, tRes.%SQLCODE, tRes.%Message)
+            $$$ThrowStatus(sc)
+        }
+
+        Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
+
+        While tRes.%Next() {
+            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Hash = tRes.Hash
+            Set stat.Statement = tRes.Statement
+            Set stat.Date = tRes.Day
+            Set stat.Count = tRes.StatCount
+            Set stat.ExecutionTime = tRes.StatTotal
+            Set stat.Commands = tRes.StatCommands
+            Set stat.Namespace = $Namespace
+            Set stat.ServerName = serverName
+            Set stat.InstanceName = instanceName
+            Do stats.Insert(stat)
+        }
+    } Catch ex {
+        Set sc = ex.AsStatus()
+        $$$ThrowStatus(sc)
+    }
+
+    Quit stats
+]]></Implementation>
+</Method>
+
+<Method name="GetHourlyStats">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
+<ReturnType>%ListOfObjects</ReturnType>
+<Implementation><![CDATA[
+    Set stats = ##class(%ListOfObjects).%New()
+    
+    Try {
+        New $ROLES
+        Set $ROLES = "%ALL"
+        
+        If $Namespace '= filter.namespace {
+            New $NAMESPACE
+            Set $NAMESPACE = filter.namespace
+        }
+        
+    
+    
+        Set dayStart = $ZDateH($Piece(filter.from, " ", 1), 3)
+        Set dayEnd = $ZDateH($Piece(filter.to, " ", 1), 3)
+
+        Set startHour = +$Extract(filter.from, 12, 13)
+        Set endHour = +$Extract(filter.to, 12, 13)
+
+        Set args($Increment(args)) = dayStart
+        Set args($Increment(args)) = dayStart
+        Set args($Increment(args)) = startHour
+        Set args($Increment(args)) = dayEnd
+        Set args($Increment(args)) = dayEnd
+        Set args($Increment(args)) = endHour
+
+        Set sql = "SELECT Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, Day->Statement->Hash, Day->Statement->Statement "
+                    _ "FROM INFORMATION_SCHEMA.STATEMENT_HOURLY_STATS "
+                    _ "WHERE (Day->Day > ? OR (Day->Day = ? AND ""Hour"" >= ?)) "
+                    _ "AND (Day->Day < ? OR (Day->Day = ? AND ""Hour"" <= ?)) "
+        
+        If filter.hash '= "" {
+            Set sql = sql _ " AND Day->Statement->Hash = ?"
+            Set args($Increment(args)) = filter.hash
+        }
+        
+        Set tStatement = ##class(%SQL.Statement).%New()
+        Set tStatement.%SelectMode = 0
+        Set tRes = ##class(%SQL.Statement).%ExecDirect(.tStatement, sql, args...)
+
+        If tRes.%SQLCODE < 0 {
+            Set sc = $$$ERROR($$$SQLError, tRes.%SQLCODE, tRes.%Message)
+            $$$ThrowStatus(sc)
+        }
+
+        Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
+
+        While tRes.%Next() {
+            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Hash = tRes.Hash
+            Set stat.Statement = tRes.Statement
+            Set stat.Date = $ZDate(tRes.Day, 3)
+            Set stat.Hour = tRes.Hour
+            Set stat.Count = tRes.StatCount
+            Set stat.ExecutionTime = tRes.StatTotal
+            Set stat.Commands = tRes.StatCommands
+            Set stat.Namespace = $Namespace
+            Set stat.ServerName = serverName
+            Set stat.InstanceName = instanceName
+            Do stats.Insert(stat)
+        }
+
+    } Catch ex {
+        Set sc = ex.AsStatus()
+        $$$ThrowStatus(sc)
+    }
+
+    Quit stats
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="dc.sqlstats.dto.FilterStatsDTO">
+<Super>%RegisteredObject</Super>
+<TimeChanged>67163,63220.471074713</TimeChanged>
+<TimeCreated>67163,63220.471074713</TimeCreated>
+
+<Property name="from">
+<Description>
+Starting date    </Description>
+<Type>%TimeStamp</Type>
+</Property>
+
+<Property name="to">
+<Description>
+Ending date</Description>
+<Type>%TimeStamp</Type>
+</Property>
+
+<Property name="hash">
+<Description>
+The SQL statement hash</Description>
+<Type>%String</Type>
+</Property>
+
+<Property name="namespace">
+<Description>
+The namespace used to retrieve sql stats</Description>
+<Type>%String</Type>
+<InitialExpression>$Namespace</InitialExpression>
+</Property>
+</Class>
+
+
+<Class name="dc.sqlstats.dto.SQLStatsDTO">
+<Description>
+this class is used to store the statistics of a SQL statement</Description>
+<Super>%RegisteredObject,%JSON.Adaptor</Super>
+<TimeChanged>67164,27150.084241848</TimeChanged>
+<TimeCreated>67163,63220.471105619</TimeCreated>
+
+<Property name="Statement">
+<Description>
+The SQL statement</Description>
+<Type>%String</Type>
+</Property>
+
+<Property name="Hash">
+<Description>
+The hash of the SQL statement (used in INFORMATION_SCHEMA)</Description>
+<Type>%String</Type>
+</Property>
+
+<Property name="Count">
+<Description>
+The number of times the SQL statement was executed</Description>
+<Type>%Integer</Type>
+</Property>
+
+<Property name="ExecutionTime">
+<Description>
+The total execution time of the SQL statement in seconds</Description>
+<Type>%Double</Type>
+</Property>
+
+<Property name="Variance">
+<Description>
+The variance of the execution time.</Description>
+<Type>%Double</Type>
+</Property>
+
+<Property name="AvgExecutionTime">
+<Description>
+The average execution time of the SQL statement in seconds</Description>
+<Type>%Double</Type>
+</Property>
+
+<Property name="Commands">
+<Description>
+The total commands executed by the SQL statement</Description>
+<Type>%Integer</Type>
+</Property>
+
+<Property name="AvgCommands">
+<Description>
+The average commands executed by the SQL statement</Description>
+<Type>%Double</Type>
+</Property>
+
+<Property name="Date">
+<Description>
+Date in formatoin yyyy-mm-dd</Description>
+<Type>%String</Type>
+</Property>
+
+<Property name="Hour">
+<Description>
+Hour of the day (ex : consider 8 is the range beteween 8 and 9)</Description>
+<Type>%Integer</Type>
+</Property>
+
+<Property name="DateTime">
+<Description>
+Date and time in format yyyy-mm-dd hh:mm:ss</Description>
+<Type>%String</Type>
+</Property>
+
+<Property name="ServerName">
+<Description>
+The server name...</Description>
+<Type>%String</Type>
+</Property>
+
+<Property name="InstanceName">
+<Description>
+IRIS instance name</Description>
+<Type>%String</Type>
+</Property>
+
+<Property name="Namespace">
+<Description>
+Namespace of the SQL statement</Description>
+<Type>%String</Type>
+</Property>
+</Class>
+
+
+<Class name="dc.sqlstats.rest.Main">
+<Super>%CSP.REST</Super>
+<TimeChanged>67164,27150.093377395</TimeChanged>
+<TimeCreated>67163,63220.475970009</TimeCreated>
+
+<XData name="UrlMap">
+<XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
+<Data><![CDATA[
+<Routes>
+    <Route Url="/ping" Method="GET" Call="Ping"/>
+    <Route Url="/daily" Method="GET" Call="Daily"/>
+    <Route Url="/hourly" Method="GET" Call="Hourly"/>
+    <Route Url="/openapi" Method="GET" Call="GetOpenAPISpec"/>
+    <Route Url="/_spec" Method="GET" Call="GetOpenAPISpec"/>
+    <Route Url="/namespaces" Method="GET" Call="GetListNamespaces"/>
+</Routes>
+]]></Data>
+</XData>
+
+<Method name="Ping">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set %response.ContentType = "application/json"
+    Set message = {
+        "message": "pong",
+        "timestamp": ($ZDateTime($Horolog, 3)),
+        "version": ($ZVersion),
+        "system": ($SYSTEM.Version.SystemMode()),
+        "hostname":(##class(%SYS.System).GetNodeName())
+    }
+    Do message.%ToJSON()
+    Return $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="Daily">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set from = $Piece($Get(%request.Data("from",1), $ZDate($Horolog-15, 3)), " ", 1)
+    Set to = $Piece($Get(%request.Data("to",1), $ZDate($Horolog, 3)), " ", 1)
+    Set hash = $Get(%request.Data("hash",1))
+
+    Try {
+        If '(from ? 4N1"-"2N1"-"2N) {
+            ; may be the posix timestamp sent by Grafana
+            ; convert epoch to timestamp yyyy-mm-dd
+            Set from = $ZDate($ZDTH(from/1000, -2), 3)
+        }
+
+        If '(to ? 4N1"-"2N1"-"2N) {
+            ; may be the posix timestamp sent by Grafana
+            ; convert epoch to timestamp yyyy-mm-dd
+            Set to = $ZDate($ZDTH(to/1000, -2), 3)
+        }
+    } Catch ex {
+        Set %response.Status = 400
+        Set %response.ContentType = "application/json"
+        Set message = {
+            "error": "Invalid date",
+            "message": "The date must be in the format yyyy-mm-dd or a posix timestamp"
+        }
+        Do message.%ToJSON()
+        Return $$$OK
+    }
+
+    Set %response.ContentType = "application/json"
+
+    Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
+    Set filter.from = from
+    Set filter.to = to
+    Set filter.hash = hash
+    If $Get(%request.Data("namespace",1)) '= "" {
+        Set filter.namespace = $Get(%request.Data("namespace",1))
+    }
+
+    Set stats = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
+
+    // stats is an array of dc.sqlstats.dto.SQLStatsDTO
+    // the reponse look like this:
+    // [
+    //     {
+    //         "Statement": "SELECT * FROM INFORMATION_SCHEMA.STATEMENTS",
+    //         "Hash": "ABCEDF123456",
+    //         "Count": 1,
+    //         "ExecutionTime": 0.0001,
+    //         "Variance": 0,
+    //         "AvgExecutionTime": 0.0001,
+    //         "Commands": 1,
+    //         "AvgCommands": 1,
+    //         "Date": "2021-06-01",
+    //         "DateTime": "2021-06-01 00:00:00",
+    //         "Hour": ""
+    //     }
+    // ]
+
+    Set gcs = ##class(%Stream.GlobalCharacter).%New()
+    Do stats.%ToJSON(.gcs)
+    Do gcs.OutputToDevice()
+
+    Return $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="Hourly">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set from = $Get(%request.Data("from",1), $ZDate($Horolog-15, 3))
+    Set to = $Get(%request.Data("to",1), $ZDate($Horolog, 3))
+    Set hash = $Get(%request.Data("hash",1))
+
+    Try {
+        If '(from ? 4N1"-"2N1"-"2N1" "2N1":"2N1":"2N) {
+            ; may be the posix timestamp sent by Grafana
+            ; convert posix to timestamp yyyy-mm-dd
+            Set from = $ZDateTime($ZDTH(from/1000, -2), 3, 1)
+        }
+
+        If '(to ? 4N1"-"2N1"-"2N1" "2N1":"2N1":"2N) {
+            ; may be the posix timestamp sent by Grafana
+            ; convert posix to timestamp yyyy-mm-dd
+            Set to = $ZDateTime($ZDTH(to/1000, -2), 3, 1)
+        }
+    } Catch ex {
+        Set %response.Status = 400
+        Set %response.ContentType = "application/json"
+        Set message = {
+            "error": "Invalid date",
+            "message": "The date must be in the format yyyy-mm-dd hh:mm:ss or a posix timestamp"
+        }
+        Do message.%ToJSON()
+        Return $$$OK
+    }
+
+    Set %response.ContentType = "application/json"
+
+    Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
+    Set filter.from = from
+    Set filter.to = to
+    Set filter.hash = hash
+    If $Get(%request.Data("namespace",1)) '= "" {
+        Set filter.namespace = $Get(%request.Data("namespace",1))
+    }
+
+    Set stats = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
+
+    // stats is an array of dc.sqlstats.dto.SQLStatsDTO
+    // the reponse look like this:
+    // [
+    //     {
+    //         "Statement": "SELECT * FROM INFORMATION_SCHEMA.STATEMENTS",
+    //         "Hash": "ABCEDF123456",
+    //         "Count": 1,
+    //         "ExecutionTime": 0.0001,
+    //         "Variance": 0,
+    //         "AvgExecutionTime": 0.0001,
+    //         "Commands": 1,
+    //         "AvgCommands": 1,
+    //         "Date": "2021-06-01",
+    //         "DateTime": "2021-06-01 09:00:00",
+    //         "Hour": 0
+    //     }
+    // ]
+
+    Set gcs = ##class(%Stream.GlobalCharacter).%New()
+    Do stats.%ToJSON(.gcs)
+    Do gcs.OutputToDevice()
+    
+    Return $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="GetOpenAPISpec">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set %response.ContentType = "application/json"
+
+    Set ns = $Namespace 
+    New $Namespace 
+    Set $Namespace = "%SYS"
+    
+    Do ##class(Security.Applications).Get(%request.Application, .app)
+    Set appDirectory = app("Path")
+    Kill app
+    Set $Namespace = ns
+
+    Set spec = {}.%FromJSONFile(appDirectory _ "openapi.json")
+
+    Set url = $Select(%request.Secure:"https",1:"http") _ "://"_$Get(%request.CgiEnvs("SERVER_NAME")) _ ":" _ $Get(%request.CgiEnvs("SERVER_PORT")) _ %request.Application
+	Set spec.servers = [{"url" : (url)}]
+
+    Set formatter = ##class(%JSON.Formatter).%New()
+    Set gcs = ##class(%Stream.GlobalCharacter).%New()
+    Do formatter.FormatToStream(spec, .gcs)
+    Do gcs.OutputToDevice()
+
+    Return $$$OK
+]]></Implementation>
+</Method>
+
+<Method name="GetListNamespaces">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set %response.ContentType = "application/json"
+
+    Set list = ##class(dc.sqlstats.services.SQLStats).GetListNamespaces()
+
+    Set array = [], ptr = 0
+    While $ListNext(list, ptr, key) {
+        Do array.%Push(key)
+    }
+
+    Do array.%ToJSON()
+
+    Return $$$OK
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="dc.sqlstats.services.Install">
+<TimeChanged>67164,27150.087294927</TimeChanged>
+<TimeCreated>67163,63220.470675902</TimeCreated>
+
+<Method name="Init">
+<Description><![CDATA[
+<summary>
+Initializes the SQL statistics service by setting up the necessary namespace and package mappings.
+</summary>
+<remarks>
+This method performs the following steps:
+1. Retrieves the current namespace.
+2. Switches to the "%SYS" namespace and sets the default database for globals.
+3. Checks if the "%All" namespace exists, and if not, creates it.
+4. Retrieves the properties of the original namespace.
+5. Checks if the "dc.sqlstats" package is mapped in the "%All" namespace, and if not, maps it.
+6. Returns the final status code.
+</remarks>
+<returns>%Status - The status code indicating the success or failure of the initialization process.</returns>]]></Description>
+<ClassMethod>1</ClassMethod>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set sc = $$$OK
+
+    Set ns = $Namespace
+    
+    New $Namespace 
+    Set $Namespace = "%SYS", p("Globals") = "%DEFAULTDB"
+    
+    If '##class(Config.Namespaces).Exists("%All") {
+        Set sc =##class(Config.Namespaces).Create("%All",.p)
+    }
+
+    Kill p
+
+    Do ##class(Config.Namespaces).Get(ns,.p)
+
+    If '##class(Config.MapPackages).Exists("%All","dc.sqlstats") {
+        Set properties("Database") = p("Routines")
+        Set sc = $$$ADDSC(sc,##class(Config.MapPackages).Create("%All","dc.sqlstats",.properties))
+    }
+
+    Return sc
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="dc.sqlstats.services.SQLStats">
+<Super>%RegisteredObject</Super>
+<TimeChanged>67164,27150.088562346</TimeChanged>
+<TimeCreated>67163,63220.473972073</TimeCreated>
+
+<Method name="DailyStats">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
+<ReturnType>%DynamicArray</ReturnType>
+<Implementation><![CDATA[
+    Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
+    Set stats = []
+   
+    Set key = ""
+
+    For  {
+        Set stat = results.GetNext(.key)
+        Quit:key=""
+
+        Set stat.AvgExecutionTime = stat.ExecutionTime / stat.Count
+        Set stat.AvgCommands = stat.Commands / stat.Count
+
+        Set item = ""
+        Do stat.%JSONExportToString(.item)
+
+        Do stats.%Push({}.%FromJSON(item))
+        Kill item
+
+        Do results.RemoveAt(key)
+    }
+
+    Return stats
+]]></Implementation>
+</Method>
+
+<Method name="HourlyStats">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
+<ReturnType>%DynamicArray</ReturnType>
+<Implementation><![CDATA[
+    Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
+    Set stats = []
+
+    #dim stat As dc.sqlstats.dto.SQLStatsDTO
+
+    Set key = ""
+    For  {
+        Set stat = results.GetNext(.key)
+        Quit:key=""
+
+        Set stat.AvgExecutionTime = stat.ExecutionTime / stat.Count
+        Set stat.AvgCommands = stat.Commands / stat.Count
+        Set stat.DateTime = stat.Date _ " " _ stat.Hour _ ":00:00"
+
+
+        Set item = ""
+        Do stat.%JSONExportToString(.item)
+        Do stats.%Push({}.%FromJSON(item))
+        Kill item
+
+        Do results.RemoveAt(key)
+    }
+
+    Return stats
+]]></Implementation>
+</Method>
+
+<Method name="GetListNamespaces">
+<ClassMethod>1</ClassMethod>
+<ReturnType>%List</ReturnType>
+<Implementation><![CDATA[
+    Do ##class(%SYS.Namespace).ListAll(.result)
+    Set key = "", list = ""
+    For  {
+        Set key = $Order(result(key))
+        Quit:key=""
+        Set $List(list, * + 1) = key
+    }
+    Return list
+]]></Implementation>
+</Method>
+</Class>
+</Export>
