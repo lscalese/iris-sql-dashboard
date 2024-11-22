@@ -2,6 +2,11 @@ ARG IMAGE=intersystemsdc/irishealth-community
 ARG IMAGE=intersystemsdc/iris-community
 FROM $IMAGE
 
+USER root
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata && apt-get clean
+
+USER irisowner
+
 WORKDIR /home/irisowner/dev
 
 ARG TESTS=0

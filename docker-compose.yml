@@ -4,23 +4,46 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: always
+    #restart: always
     ports:
       - 1972
       - 63077:52773
       - 53773
     volumes:
       - ./:/home/irisowner/dev
-    command: ["-a", "/home/irisowner/dev/iris_post_start_script.sh"]
-  
+    
+    # Put your timezone here (available list code here https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+    environment:
+      - TZ=${TZ:-Europe/Paris}
+      #- TZ=Europe/London
+      #- TZ=Asia/Dubai
+      #- TZ=America/New_York
+      - INFLUX_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
+
   grafana:
     image: grafana/grafana-oss
     environment:
       - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
-      - DS_IRIS=be45rxg6i2bcwd
     ports:
       - 3000:3000
     volumes:
       - ./grafana-storage:/var/lib/grafana
       #- ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
       #- ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
+
+  influxdb2:
+    image: influxdb:2
+    ports:
+      - 8086:8086
+    volumes:
+      - ./influxdb2-storage:/var/lib/influxdb2
+      - ./influxdb2-config:/etc/influxdb2
+      #- ./init-influxdb.sh:/docker-entrypoint-initdb.d/init-influxdb.sh
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${DOCKER_INFLUXDB_INIT_PASSWORD:-sysadmin}
+      - DOCKER_INFLUXDB_INIT_ORG=dc
+      - DOCKER_INFLUXDB_INIT_BUCKET=IRIS_SQL_STATS
+      - DOCKER_INFLUXDB_INIT_RETENTION=0
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}

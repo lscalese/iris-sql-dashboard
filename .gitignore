@@ -1,3 +1,6 @@
 .DS_Store
 grafana-storage/
 notes.txt
+influxdb2-storage/
+influxdb2-config/
+.env

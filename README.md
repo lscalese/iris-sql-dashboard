@@ -42,3 +42,11 @@ If you can't use zpm, import and compile `export.xml` and then execute the Init(
 Do $SYSTEM.OBJ.Load("<git-directory>/iris-sql-dashboard/export.xml", "ck")
 Do ##class(dc.sqlstats.services.Install).Init()
 ```
+
+
+## Generate a key
+
+If 
+```
+
+```

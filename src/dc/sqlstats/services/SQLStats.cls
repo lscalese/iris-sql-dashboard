@@ -1,69 +1,32 @@
 Class dc.sqlstats.services.SQLStats Extends %RegisteredObject
 {
 
-ClassMethod DailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %DynamicArray
+ClassMethod DailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfObjects
 {
-    Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
-    Set stats = []
-   
-   Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
-
-    Set key = ""
-
-    For  {
-        Set stat = results.GetNext(.key)
-        Quit:key=""
-
-        Set stat.AvgExecutionTime = stat.ExecutionTime / stat.Count
-        Set stat.AvgCommands = stat.Commands / stat.Count
-        Set stat.DateTime = stat.Date _ " 00:00:00"
-        Set stat.Period = "daily"
-        Set stat.ServerName = serverName
-        Set stat.InstanceName = instanceName
-
-        Set item = ""
-        Do stat.%JSONExportToString(.item)
-
-        Do stats.%Push({}.%FromJSON(item))
-        Kill item
-
-        Do results.RemoveAt(key)
-    }
-
-    Return stats
+    Return ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
 }
 
-ClassMethod HourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %DynamicArray
+ClassMethod HourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfObjects
 {
-    Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
-    Set stats = []
+    Return ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
+}
 
-    Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
+ClassMethod ConvertToDynamicArray(results As %ListOfObjects, removeItemAfterConvert As %Boolean = {$$$YES}) As %DynamicArray
+{
+    #dim item As dc.sqlstats.dto.SQLStatsDTO
 
-    #dim stat As dc.sqlstats.dto.SQLStatsDTO
-
+    Set array = ##class(%DynamicArray).%New()
     Set key = ""
     For  {
-        Set stat = results.GetNext(.key)
+        Set item = results.GetNext(.key)
         Quit:key=""
 
-        Set stat.AvgExecutionTime = stat.ExecutionTime / stat.Count
-        Set stat.AvgCommands = stat.Commands / stat.Count
-        Set stat.DateTime = stat.Date _ " " _ stat.Hour _ ":00:00"
-        Set stat.Period = "hourly"
-        Set stat.ServerName = serverName
-        Set stat.InstanceName = instanceName
-
-
-        Set item = ""
-        Do stat.%JSONExportToString(.item)
-        Do stats.%Push({}.%FromJSON(item))
-        Kill item
+        Do item.%JSONExportToString(.json)
+        Do array.%Push({}.%FromJSON(json))
 
         Do results.RemoveAt(key)
     }
-
-    Return stats
+    Return array
 }
 
 ClassMethod GetListNamespaces() As %List
@@ -90,6 +53,8 @@ ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb
     Set filter.to = $ZDateTime($Horolog, 3, 1)
     
     Set ptr = 0, namespaces = ..GetListNamespaces(), stream = ##class(%Stream.FileCharacter).%New()
+    Set stream.StreamFormatWrite = 0
+    Set stream.LineTerminator = $Char(10)
 
     Do stream.LinkToFile(fileName)
 
@@ -110,16 +75,22 @@ ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb
     Return stream.%Save()
 }
 
-/// Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(,)
-ClassMethod ConvertToLineProtocol(results As %DynamicArray, Output stream As %Stream.GlobalCharacter = {##class(%Stream.GlobalCharacter).%New()}) As %Status
+/// Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(resulsts,.stream)
+ClassMethod ConvertToLineProtocol(results As %ListOfObjects, Output stream As %Stream.GlobalCharacter = {##class(%Stream.GlobalCharacter).%New()}) As %Status
 {
     Set replaceStr = "%%1%%"
+    Set stream.LineTerminator = $Char(10)
 
-    Set iterator = results.%GetIterator()
+    #dim item As dc.sqlstats.dto.SQLStatsDTO
     Set key = ""
-    While iterator.%GetNext(.key, .item) {
-        Set item = results.%Get(key)
-        Set:item.DateTime="" item.DateTime = $zdt($h,3,1)
+
+    For  {
+        Set item = results.GetNext(.key)
+        Quit:key=""
+
+        If item.DateTime = "" {
+            Continue
+        }
 
         If item.Period = "daily" {
             Set line = "sqlstats_daily"
@@ -133,7 +104,7 @@ ClassMethod ConvertToLineProtocol(results As %DynamicArray, Output stream As %St
             Set line = line _ "," _ tag _ "=" _ replaceStr
         }
 
-        For tagValue = item.ServerName, item.InstanceName, item.Namespace, item.id {
+        For tagValue = item.ServerName, item.InstanceName, item.Namespace, item.Id {
             Set escapedTagValue = ..EscapeTagValue(tagValue)
             Set line = $Replace(line, replaceStr, escapedTagValue, 0, 1)
         }
@@ -147,9 +118,10 @@ ClassMethod ConvertToLineProtocol(results As %DynamicArray, Output stream As %St
         Set line = line _ ",statement="""_ ..EscapeFieldValue(item.Statement) _""""
         
         Set line = line _ " " _ $ZDateTime($ZDTH(item.DateTime, 3, 1), -2)
-
+        
         Do stream.WriteLine($Translate(line, $Char(13,10), ""))
     }
+    
     Return $$$OK
 }
 

@@ -56,36 +56,48 @@ ClassMethod Daily() As %Status
         Return $$$OK
     }
 
-    Set %response.ContentType = "application/json"
+    
 
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
+    
     If $Get(%request.Data("namespace",1)) '= "" {
-        Set filter.namespace = $Get(%request.Data("namespace",1))
+        Set filter.namespace = $ZConvert($Get(%request.Data("namespace",1)), "U")
     }
 
-    Set stats = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
+    Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
 
     // stats is an array of dc.sqlstats.dto.SQLStatsDTO
     // the reponse look like this:
     // [
     //     {
-    //         "Statement": "SELECT * FROM INFORMATION_SCHEMA.STATEMENTS",
-    //         "Hash": "ABCEDF123456",
-    //         "Count": 1,
-    //         "ExecutionTime": 0.0001,
-    //         "Variance": 0,
-    //         "AvgExecutionTime": 0.0001,
-    //         "Commands": 1,
-    //         "AvgCommands": 1,
-    //         "Date": "2021-06-01",
-    //         "DateTime": "2021-06-01 00:00:00",
-    //         "Hour": ""
+    //         "statement": "SELECT * FROM INFORMATION_SCHEMA.STATEMENTS",
+    //         "hash": "ABCEDF123456",
+    //         "count": 1,
+    //         "execution_time": 0.0001,
+    //         "variance": 0.000005,
+    //         "commands": 1,
+    //         "datetime": "2021-06-01 09:00:00",
+    //         "server_name": "IRIS",
+    //         "instance_name": "IRIS",
+    //         "namespace": "USER",
+    //         "period": "daily",
+    //         "id": "1",
+    //         "row_count": 25
     //     }
     // ]
-    s ^lsc = stats.%ToJSON()
+    
+    If $$$LOWER(%request.GetCgiEnv("HTTP_ACCEPT")) [ "text/plain" {
+        Set %response.ContentType = "text/plain"
+        Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results,.gcs)
+        Do gcs.OutputToDevice()
+        Return $$$OK
+    }
+
+    Set %response.ContentType = "application/json"
+    Set stats = ##class(dc.sqlstats.services.SQLStats).ConvertToDynamicArray(results)
     Set gcs = ##class(%Stream.GlobalCharacter).%New()
     Do stats.%ToJSON(.gcs)
     Do gcs.OutputToDevice()
@@ -122,36 +134,45 @@ ClassMethod Hourly() As %Status
         Return $$$OK
     }
 
-    Set %response.ContentType = "application/json"
-
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
     If $Get(%request.Data("namespace",1)) '= "" {
-        Set filter.namespace = $Get(%request.Data("namespace",1))
+       Set filter.namespace = $ZConvert($Get(%request.Data("namespace",1)), "U")
     }
 
-    Set stats = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
+    Set results = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
 
     // stats is an array of dc.sqlstats.dto.SQLStatsDTO
     // the reponse look like this:
     // [
     //     {
-    //         "Statement": "SELECT * FROM INFORMATION_SCHEMA.STATEMENTS",
-    //         "Hash": "ABCEDF123456",
-    //         "Count": 1,
-    //         "ExecutionTime": 0.0001,
-    //         "Variance": 0,
-    //         "AvgExecutionTime": 0.0001,
-    //         "Commands": 1,
-    //         "AvgCommands": 1,
-    //         "Date": "2021-06-01",
-    //         "DateTime": "2021-06-01 09:00:00",
-    //         "Hour": 0
+    //         "statement": "SELECT * FROM INFORMATION_SCHEMA.STATEMENTS",
+    //         "hash": "ABCEDF123456",
+    //         "count": 1,
+    //         "execution_time": 0.0001,
+    //         "variance": 0.000005,
+    //         "commands": 1,
+    //         "datetime": "2021-06-01 09:00:00",
+    //         "server_name": "IRIS",
+    //         "instance_name": "IRIS",
+    //         "namespace": "USER",
+    //         "period": "hourly",
+    //         "id": "1",
+    //         "row_count": 25
     //     }
     // ]
 
+    If $$$LOWER(%request.GetCgiEnv("HTTP_ACCEPT")) [ "text/plain" {
+        Set %response.ContentType = "text/plain"
+        Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results,.gcs)
+        Do gcs.OutputToDevice()
+        Return $$$OK
+    }
+
+    Set %response.ContentType = "application/json"
+    Set stats = ##class(dc.sqlstats.services.SQLStats).ConvertToDynamicArray(results)
     Set gcs = ##class(%Stream.GlobalCharacter).%New()
     Do stats.%ToJSON(.gcs)
     Do gcs.OutputToDevice()

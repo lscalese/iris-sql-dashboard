@@ -3,53 +3,41 @@ Class dc.sqlstats.dto.SQLStatsDTO Extends (%RegisteredObject, %JSON.Adaptor)
 {
 
 /// The SQL statement
-Property Statement As %String;
+Property Statement As %String(%JSONFIELDNAME = "statement");
 
 /// The hash of the SQL statement (used in INFORMATION_SCHEMA)
-Property Hash As %String;
+Property Hash As %String(%JSONFIELDNAME = "hahs");
 
 /// The number of times the SQL statement was executed
-Property Count As %Integer;
+Property Count As %Integer(%JSONFIELDNAME = "count");
 
 /// The total execution time of the SQL statement in seconds
-Property ExecutionTime As %Double;
+Property ExecutionTime As %Double(%JSONFIELDNAME = "execution_time");
 
 /// The variance of the execution time.
-Property Variance As %Double;
-
-/// The average execution time of the SQL statement in seconds
-Property AvgExecutionTime As %Double;
+Property Variance As %Double(%JSONFIELDNAME = "variance");
 
 /// The total commands executed by the SQL statement
-Property Commands As %Integer;
-
-/// The average commands executed by the SQL statement
-Property AvgCommands As %Double;
-
-/// Date in formatoin yyyy-mm-dd
-Property Date As %String;
-
-/// Hour of the day (ex : consider 8 is the range beteween 8 and 9)
-Property Hour As %Integer;
+Property Commands As %Integer(%JSONFIELDNAME = "commands");
 
 /// Date and time in format yyyy-mm-dd hh:mm:ss
-Property DateTime As %String;
+Property DateTime As %String(%JSONFIELDNAME = "datetime");
 
 /// The server name...
-Property ServerName As %String;
+Property ServerName As %String(%JSONFIELDNAME = "server_name") [ InitialExpression = {##class(%SYS.System).GetNodeName()} ];
 
 /// IRIS instance name
-Property InstanceName As %String;
+Property InstanceName As %String(%JSONFIELDNAME = "instance_name") [ InitialExpression = {##class(%SYS.System).GetInstanceName()} ];
 
 /// Namespace of the SQL statement
-Property Namespace As %String;
+Property Namespace As %String(%JSONFIELDNAME = "namespace") [ InitialExpression = {$Namespace} ];
 
 /// The period of the statistics
 /// daily or hourly
-Property Period As %String;
+Property Period As %String(%JSONFIELDNAME = "period");
 
-Property id As %String;
+Property Id As %String(%JSONFIELDNAME = "id");
 
-Property RowCount As %Integer;
+Property RowCount As %Integer(%JSONFIELDNAME = "row_count");
 
 }

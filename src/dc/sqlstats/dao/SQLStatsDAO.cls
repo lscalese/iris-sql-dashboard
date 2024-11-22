@@ -1,11 +1,14 @@
 Class dc.sqlstats.dao.SQLStatsDAO Extends %RegisteredObject
 {
 
-ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfObjects
+ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As %ListOfObjects = "") As %ListOfObjects
 {
-    Set stats = ##class(%ListOfObjects).%New()
-
-        
+    If $IsObject(initList) {
+        Set stats = initList
+    } Else {
+        Set stats = ##class(%ListOfObjects).%New()
+    }
+    
     Try {
         New $ROLES
         Set $ROLES = "%ALL"
@@ -41,16 +44,16 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfOb
 
         While tRes.%Next() {
             Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.id = tRes.ID
+            Set stat.Id = tRes.ID
             Set stat.Hash = tRes.Hash
             Set stat.Statement = tRes.Statement
-            Set stat.Date = tRes.Day
+            Set stat.DateTime = tRes.Day_" 00:00:00"
             Set stat.Count = tRes.StatCount
             Set stat.ExecutionTime = tRes.StatTotal
             Set stat.Commands = tRes.StatCommands
             Set stat.Variance = tRes.StatVariance
             Set stat.RowCount = tRes.StatRowCount
-            Set stat.Namespace = $Namespace
+            Set stat.Period = "daily"
             Do stats.Insert(stat)
         }
     } Catch ex {
@@ -61,10 +64,15 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfOb
     Quit stats
 }
 
-ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfObjects
+ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As %ListOfObjects = "") As %ListOfObjects
 {
-    Set stats = ##class(%ListOfObjects).%New()
-    
+
+    If $IsObject(initList) {
+        Set stats = initList
+    } Else {
+        Set stats = ##class(%ListOfObjects).%New()
+    }
+
     Try {
         New $ROLES
         Set $ROLES = "%ALL"
@@ -110,17 +118,16 @@ ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfO
 
         While tRes.%Next() {
             Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.id = tRes.ID
+            Set stat.Id = tRes.ID
             Set stat.Hash = tRes.Hash
             Set stat.Statement = tRes.Statement
-            Set stat.Date = $ZDate(tRes.Day, 3)
-            Set stat.Hour = tRes.Hour
+            Set stat.DateTime = $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00"
             Set stat.Count = tRes.StatCount
             Set stat.ExecutionTime = tRes.StatTotal
             Set stat.Commands = tRes.StatCommands
             Set stat.Variance = tRes.StatVariance
-            Set stat.Namespace = $Namespace
             Set stat.RowCount = tRes.StatRowCount
+            Set stat.Period = "hourly"
             Do stats.Insert(stat)
         }
 

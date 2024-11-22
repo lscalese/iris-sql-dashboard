@@ -63,6 +63,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/SQLStatsDTO'
+            text/plain:
+              schema:
+                type: string
         '400':
           description: Invalid date format
           content:
@@ -111,6 +114,9 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/SQLStatsDTO'
+            text/plain:
+              schema:
+                type: string
         '400':
           description: Invalid date format
           content:
@@ -150,31 +156,31 @@ components:
     SQLStatsDTO:
       type: object
       properties:
-        Statement:
+        statement:
           type: string
-        Hash:
+        hash:
           type: string
-        Count:
+        count:
           type: integer
-        ExecutionTime:
+        execution_time:
           type: number
-        Variance:
+        variance:
           type: number
-        AvgExecutionTime:
+        avg_execution_time:
           type: number
-        Commands:
+        commands:
           type: integer
-        AvgCommands:
+        avg_commands:
           type: number
-        Date:
+        date:
           type: string
-        DateTime:
+        datetime:
           type: string
-        Hour:
+        hour:
           type: integer
-        Namespace:
+        namespace:
           type: string
-        ServerName:
+        server_name:
           type: string
-        InstanceName:
+        instance_name:
           type: string
