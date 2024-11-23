@@ -5,23 +5,25 @@ Class dc.sqlstats.influxdb.PushStats Extends %SYS.Task.Definition
 
 Parameter TaskName = "Influx DB - Push SQL Stats";
 
+Parameter HistoryTaskName = "Influx DB - Push SQL Stats History";
+
 Parameter WRITE = "/api/v2/write?bucket=${BucketName}&precision=s&org=${Org}";
 
 /// InfluxDB address, <protocol>://<host>:<port>
-Property Host As %String [ InitialExpression = "http://influxdb2:8086" ];
+Property Host As %String(MAXLEN = 1024) [ InitialExpression = "http://influxdb2:8086" ];
 
 /// InfluxDB bucket name
 Property BucketName As %String [ InitialExpression = "IRIS_SQL_STATS" ];
 
 /// Organization name
-Property Org As %String [ InitialExpression = "dc" ];
+Property Org As %String(MAXLEN = 1024) [ InitialExpression = "dc" ];
 
 /// Influx DB Token
 /// If you let it empty, it will try to get the token from ^influx("token") global and then environment variable INFLUX_TOKEN
-Property Token As %String;
+Property Token As %String(MAXLEN = 1024);
 
 /// If https is used, fill in the SSL configuration name
-Property SSLConfig As %String;
+Property SSLConfig As %String(MAXLEN = 1024);
 
 /// If true, it will send the history otherwise it will send the data from the last successful send
 /// It should be set to true for an on demand task.
@@ -42,6 +44,51 @@ Method OnTask() As %Status
     }
 
     Return tSc
+}
+
+ClassMethod CreateOnDemandTask() As %Status
+{
+	Set sc = $$$OK
+	Return:..getTaskId()'="" $$$ERROR($$$GeneralError,"Task already exist")
+	Set task = ##class(%SYS.Task).%New()
+	Set task.Name=..#HistoryTaskName
+	Set task.Description="Push SQL Stats History to Influx DB."
+	Set task.NameSpace=$namespace
+	Set task.RunAsUser="_system"
+	Set task.TaskClass=..%ClassName(1)
+	
+	Set task.TimePeriod=5	; On demand
+    
+	
+	Set task.Priority=1
+
+    Set def = ..%New()
+    Set def.SendHistory = 1
+    Do task.AssignSettings(def)
+
+  	Set sc = task.%Save()
+
+	Return sc
+}
+
+ClassMethod getTaskId(ByRef sc As %Status = {$$$OK}, className As %String = {..%ClassName(1)}) As %String
+{
+	Set id = "", tStatement = ##class(%SQL.Statement).%New()
+
+	$$$ThrowOnError(tStatement.%PrepareClassQuery("%SYS.Task","TaskListDetail"))
+	
+	Set tResult = tStatement.%Execute()
+	
+	While (tResult.%Next(.sc)) {
+		
+		If $$$ISERR(sc) $$$ThrowStatus(sc)
+
+		If tResult.%Get("TaskClass") = className {
+			Set id = tResult.%Get("ID")
+			Quit
+		}
+	}
+	Quit id
 }
 
 Method SendData(from As %TimeStamp = {$Get(^influx("last-to-success"), $ZDateTime("1,0", 3,1 ))}) As %Status
