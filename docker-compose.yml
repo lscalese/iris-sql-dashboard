@@ -38,7 +38,8 @@ services:
     volumes:
       - ./influxdb2-storage:/var/lib/influxdb2
       - ./influxdb2-config:/etc/influxdb2
-      #- ./init-influxdb.sh:/docker-entrypoint-initdb.d/init-influxdb.sh
+      - ./init-influxdb.sh:/docker-entrypoint-initdb.d/init-influxdb.sh
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
@@ -47,3 +48,14 @@ services:
       - DOCKER_INFLUXDB_INIT_BUCKET=IRIS_SQL_STATS
       - DOCKER_INFLUXDB_INIT_RETENTION=0
       - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
+
+  telegraf:
+    image: telegraf
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf
+    environment:
+      - INFLUX_TOKEN=${TELEGRAF_INFLUX_API_KEY}
+      - IRIS_USER=${IRIS_USER}
+      - IRIS_PASSWORD=${IRIS_PASSWORD}
+    depends_on:
+      - influxdb2

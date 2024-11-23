@@ -4,7 +4,6 @@ FROM $IMAGE
 
 USER root
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get -y install tzdata && apt-get clean
-
 USER irisowner
 
 WORKDIR /home/irisowner/dev

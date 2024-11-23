@@ -29,7 +29,15 @@ ClassMethod Ping() As %Status
 
 ClassMethod Daily() As %Status
 {
-    Set from = $Piece($Get(%request.Data("from",1), $ZDate($Horolog-15, 3)), " ", 1)
+    Set ^lsc("last-daily") = $ZDateTime($Horolog, 3, 1)
+
+    If $Get(%request.Data("from",1)) = "" {
+        Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+        Set from = $Piece(from, " ", 1)
+    } Else {
+        Set from = $Piece($Get(%request.Data("from",1)), " ", 1)
+    }
+
     Set to = $Piece($Get(%request.Data("to",1), $ZDate($Horolog, 3)), " ", 1)
     Set hash = $Get(%request.Data("hash",1))
 
@@ -107,8 +115,14 @@ ClassMethod Daily() As %Status
 
 ClassMethod Hourly() As %Status
 {
-    Set from = $Get(%request.Data("from",1), $ZDate($Horolog-15, 3))
-    Set to = $Get(%request.Data("to",1), $ZDate($Horolog, 3))
+    ;Set from = $Get(%request.Data("from",1), $ZDate($Horolog-15, 3))
+    ;Set to = $Get(%request.Data("to",1), $ZDate($Horolog, 3))
+    If $Get(%request.Data("from",1)) = "" {
+        Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+    } Else {
+        Set from = $Get(%request.Data("from",1))
+    }
+    Set to = $Get(%request.Data("to",1), $ZDateTime($Horolog, 3, 1))
     Set hash = $Get(%request.Data("hash",1))
 
     Try {

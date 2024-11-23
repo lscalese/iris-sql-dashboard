@@ -76,8 +76,21 @@ ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb
 }
 
 /// Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(resulsts,.stream)
-ClassMethod ConvertToLineProtocol(results As %ListOfObjects, Output stream As %Stream.GlobalCharacter = {##class(%Stream.GlobalCharacter).%New()}) As %Status
+ClassMethod ConvertToLineProtocol(results As %ListOfObjects, Output stream As %Stream.GlobalCharacter = {##class(%Stream.GlobalCharacter).%New()}, timeUnit As %String = "ns") As %Status
 {
+    Set timeFactor = 1
+    If timeUnit = "s" {
+        Set timeFactor = 1
+    } ElseIf timeUnit = "ms" {
+        Set timeFactor = 1000
+    } ElseIf timeUnit = "µs" {
+        Set timeFactor = 1000000
+    } ElseIf timeUnit = "ns" {
+        Set timeFactor = 1000000000
+    } Else {
+        $$$ThrowStatus($$$ERROR($$$GeneralError, "Invalid time unit only s, ms, us, ns are allowed"))
+    }
+
     Set replaceStr = "%%1%%"
     Set stream.LineTerminator = $Char(10)
 
@@ -117,7 +130,7 @@ ClassMethod ConvertToLineProtocol(results As %ListOfObjects, Output stream As %S
         Set line = line _ ",hash="""_ ..EscapeFieldValue(item.Hash) _ """"
         Set line = line _ ",statement="""_ ..EscapeFieldValue(item.Statement) _""""
         
-        Set line = line _ " " _ $ZDateTime($ZDTH(item.DateTime, 3, 1), -2)
+        Set line = line _ " " _ ($ZDateTime($ZDTH(item.DateTime, 3, 1), -2) * timeFactor)
         
         Do stream.WriteLine($Translate(line, $Char(13,10), ""))
     }

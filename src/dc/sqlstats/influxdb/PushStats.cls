@@ -23,31 +23,25 @@ Property Token As %String;
 /// If https is used, fill in the SSL configuration name
 Property SSLConfig As %String;
 
+/// If true, it will send the history otherwise it will send the data from the last successful send
+/// It should be set to true for an on demand task.
+Property SendHistory As %Boolean [ InitialExpression = 0 ];
+
 Method OnTask() As %Status
 {
     Set tSc = $$$OK
     
     Try {
-        Set tSc = ..SendData()
+        If ..SendHistory {
+            Set tSc = ..SendData($ZdateTime("1,0", 3, 1))
+        } Else {
+            Set tSc = ..SendData()
+        }
     } Catch ex {
         Set tSc = ex.AsStatus()
     }
 
     Return tSc
-}
-
-ClassMethod Test() As %Status
-{
-    Set obj = ..%New()
-    
-    Set obj.Host = "http://influxdb2:8086"
-    Set obj.BucketName = "IRIS_SQL_STATS"
-    Set obj.Org = "dc"
-    Set obj.Token = "sDqRnDkU1swVMMaLr_iHSBpa72N-h1nT4fyfBSVjmnMPGtWvYNplcAjKygMxLKhilK7CCuU_ogUKt4ADMSuZ3A=="
-
-    Set sc = obj.SendData($ZdateTime("1,0", 3, 1))
-
-    Return sc
 }
 
 Method SendData(from As %TimeStamp = {$Get(^influx("last-to-success"), $ZDateTime("1,0", 3,1 ))}) As %Status
@@ -64,13 +58,15 @@ Method SendData(from As %TimeStamp = {$Get(^influx("last-to-success"), $ZDateTim
     
     Set namespaces = ##class(dc.sqlstats.services.SQLStats).GetListNamespaces()
 
+    Set timeUnit = "s"
+
     Set ptr = 0, stream = ##class(%Stream.GlobalCharacter).%New()
 
     While $ListNext(namespaces, ptr, namespace) {
         Set filter.namespace = namespace
         Set filter.from = dailyFrom
         Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
-        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream)
+        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
         
         If $$$ISERR(sc) {
             Return sc
@@ -78,12 +74,17 @@ Method SendData(from As %TimeStamp = {$Get(^influx("last-to-success"), $ZDateTim
         
         Set filter.from = hourlyFrom
         Set results = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
-        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream)
+        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
         
         If $$$ISERR(sc) {
             Return sc
         }
 
+    }
+
+    If stream.Size = 0 {
+        ; Nothing to send ...
+        Return sc
     }
 
     /* 
