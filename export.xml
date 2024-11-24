@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-23 07:35:17">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-24 15:18:01">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
 <TimeChanged>67166,35271.000970059</TimeChanged>
@@ -155,7 +155,7 @@
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67166,35271.001049159</TimeChanged>
+<TimeChanged>67168,43852.904933737</TimeChanged>
 <TimeCreated>67166,35271.001049159</TimeCreated>
 
 <Property name="from">
@@ -180,7 +180,6 @@ The SQL statement hash</Description>
 <Description>
 The namespace used to retrieve sql stats</Description>
 <Type>%String</Type>
-<InitialExpression>$Namespace</InitialExpression>
 </Property>
 </Class>
 
@@ -290,11 +289,15 @@ daily or hourly</Description>
 curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
  --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
 <Super>%SYS.Task.Definition</Super>
-<TimeChanged>67167,27284.237839163</TimeChanged>
+<TimeChanged>67168,1869.429405739</TimeChanged>
 <TimeCreated>67166,35271.002034329</TimeCreated>
 
 <Parameter name="TaskName">
 <Default>Influx DB - Push SQL Stats</Default>
+</Parameter>
+
+<Parameter name="HistoryTaskName">
+<Default>Influx DB - Push SQL Stats History</Default>
 </Parameter>
 
 <Parameter name="WRITE">
@@ -306,6 +309,7 @@ curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
 InfluxDB address, <protocol>://<host>:<port>]]></Description>
 <Type>%String</Type>
 <InitialExpression>"http://influxdb2:8086"</InitialExpression>
+<Parameter name="MAXLEN" value="1024"/>
 </Property>
 
 <Property name="BucketName">
@@ -320,6 +324,7 @@ InfluxDB bucket name</Description>
 Organization name</Description>
 <Type>%String</Type>
 <InitialExpression>"dc"</InitialExpression>
+<Parameter name="MAXLEN" value="1024"/>
 </Property>
 
 <Property name="Token">
@@ -327,12 +332,22 @@ Organization name</Description>
 Influx DB Token
 If you let it empty, it will try to get the token from ^influx("token") global and then environment variable INFLUX_TOKEN</Description>
 <Type>%String</Type>
+<Parameter name="MAXLEN" value="1024"/>
 </Property>
 
 <Property name="SSLConfig">
 <Description>
 If https is used, fill in the SSL configuration name</Description>
 <Type>%String</Type>
+<Parameter name="MAXLEN" value="1024"/>
+</Property>
+
+<Property name="SendHistory">
+<Description>
+If true, it will send the history otherwise it will send the data from the last successful send
+It should be set to true for an on demand task.</Description>
+<Type>%Boolean</Type>
+<InitialExpression>0</InitialExpression>
 </Property>
 
 <Method name="OnTask">
@@ -341,7 +356,13 @@ If https is used, fill in the SSL configuration name</Description>
     Set tSc = $$$OK
     
     Try {
-        Set tSc = ..SendData()
+        If ..SendHistory || ($Get(^influx("last-to-success")) = "") {
+            Set tSc = ..SendData($ZdateTime("0,0", 3, 1))
+        } Else {
+            Set from = ^influx("last-to-success")
+            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, from)
+            Set tSc = ..SendData()
+        }
     } Catch ex {
         Set tSc = ex.AsStatus()
     }
@@ -350,59 +371,96 @@ If https is used, fill in the SSL configuration name</Description>
 ]]></Implementation>
 </Method>
 
-<Method name="Test">
+<Method name="CreateOnDemandTask">
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-    Set obj = ..%New()
+	Set sc = $$$OK
+	Return:..getTaskId(,,..#HistoryTaskName)'="" $$$ERROR($$$GeneralError,"Task already exist")
+	Set task = ##class(%SYS.Task).%New()
+	Set task.Name=..#HistoryTaskName
+	Set task.Description="Push SQL Stats History to Influx DB."
+	Set task.NameSpace=$namespace
+	Set task.RunAsUser="_system"
+	Set task.TaskClass=..%ClassName(1)
+	
+	Set task.TimePeriod=5	; On demand
     
-    Set obj.Host = "http://influxdb2:8086"
-    Set obj.BucketName = "IRIS_SQL_STATS"
-    Set obj.Org = "dc"
-    Set obj.Token = "sDqRnDkU1swVMMaLr_iHSBpa72N-h1nT4fyfBSVjmnMPGtWvYNplcAjKygMxLKhilK7CCuU_ogUKt4ADMSuZ3A=="
+	
+	Set task.Priority=1
 
-    Set sc = obj.SendData($ZdateTime("1,0", 3, 1))
+    Set def = ..%New()
+    Set def.SendHistory = 1
+    Do task.AssignSettings(def)
 
-    Return sc
+  	Set sc = task.%Save()
+
+	Return sc
+]]></Implementation>
+</Method>
+
+<Method name="getTaskId">
+<ClassMethod>1</ClassMethod>
+<FormalSpec><![CDATA[&sc:%Status=$$$OK,className:%String=..%ClassName(1),name:%String]]></FormalSpec>
+<ReturnType>%String</ReturnType>
+<Implementation><![CDATA[
+	Set id = "", tStatement = ##class(%SQL.Statement).%New()
+
+	$$$ThrowOnError(tStatement.%PrepareClassQuery("%SYS.Task","TaskListDetail"))
+	
+	Set tResult = tStatement.%Execute()
+	
+	While (tResult.%Next(.sc)) {
+		
+		If $$$ISERR(sc) $$$ThrowStatus(sc)
+
+		If tResult.%Get("TaskClass") = className, tResult.%Get("Name") = name {
+			Set id = tResult.%Get("ID")
+			Quit
+		}
+	}
+	Quit id
 ]]></Implementation>
 </Method>
 
 <Method name="SendData">
-<FormalSpec>from:%TimeStamp={$Get(^influx("last-to-success"), $ZDateTime("1,0", 3,1 ))}</FormalSpec>
+<FormalSpec>from:%TimeStamp={$ZDateTime(+$Horolog_",0", 3, 1)}</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
     Set sc = $$$OK
-
-    ; - 1 day to be sure to complete not calculated previous data
-    Set dailyFrom = ##class(%SYSTEM.SQL.Functions).DATEADD("dd", -1, from)
-    ; - 1 hour to be sure to complete not calculated previous data
-    Set hourlyFrom = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, from)
 
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
     Set filter.to = $ZDateTime($Horolog, 3, 1)
     
     Set namespaces = ##class(dc.sqlstats.services.SQLStats).GetListNamespaces()
 
+    Set timeUnit = "s"
+
     Set ptr = 0, stream = ##class(%Stream.GlobalCharacter).%New()
 
     While $ListNext(namespaces, ptr, namespace) {
         Set filter.namespace = namespace
-        Set filter.from = dailyFrom
+        Set filter.from = from
+        
         Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
-        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream)
+        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
         
         If $$$ISERR(sc) {
             Return sc
         }
         
-        Set filter.from = hourlyFrom
         Set results = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
-        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream)
+        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
         
         If $$$ISERR(sc) {
             Return sc
         }
 
+    }
+
+    If stream.Size = 0 {
+        ; Nothing to send ...
+        Return sc
     }
 
     /* 
@@ -473,7 +531,7 @@ If https is used, fill in the SSL configuration name</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67166,35271.013217187</TimeChanged>
+<TimeChanged>67168,45396.844696882</TimeChanged>
 <TimeCreated>67166,35271.013217187</TimeCreated>
 
 <XData name="UrlMap">
@@ -511,7 +569,22 @@ If https is used, fill in the SSL configuration name</Description>
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-    Set from = $Piece($Get(%request.Data("from",1), $ZDate($Horolog-15, 3)), " ", 1)
+    If $Get(%request.Data("from",1)) = "", $Get(%request.Data("to",1)) = "", '$Data(^dc.sqlstats.first("daily")) {
+        ; trick to send the historical data at the first call from Telegraf Agent
+        ; just kill ^dc.sqlstats.first in a terminal to reset
+        Set ^dc.sqlstats.first("daily") = $zdt($h,3,1) ; just a flat to avoid to send the historical data the next time
+        Set from =  $ZDate("0,0", 3)
+    } Else {
+
+        If $Get(%request.Data("from",1)) = "" {
+            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+            Set from = $Piece(from, " ", 1)
+        } Else {
+            Set from = $Piece($Get(%request.Data("from",1)), " ", 1)
+        }
+
+    }
+
     Set to = $Piece($Get(%request.Data("to",1), $ZDate($Horolog, 3)), " ", 1)
     Set hash = $Get(%request.Data("hash",1))
 
@@ -592,8 +665,23 @@ If https is used, fill in the SSL configuration name</Description>
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-    Set from = $Get(%request.Data("from",1), $ZDate($Horolog-15, 3))
-    Set to = $Get(%request.Data("to",1), $ZDate($Horolog, 3))
+    ;Set from = $Get(%request.Data("from",1), $ZDate($Horolog-15, 3))
+    ;Set to = $Get(%request.Data("to",1), $ZDate($Horolog, 3))
+     If $Get(%request.Data("from",1)) = "", $Get(%request.Data("to",1)) = "", '$Data(^dc.sqlstats.first("hourly")) {
+        ; trick to send the historical data at the first call from Telegraf Agent
+        ; just kill ^dc.sqlstats.first in a terminal to reset
+        Set ^dc.sqlstats.first("hourly") = $zdt($h,3,1) ; just a flat to avoid to send the historical data the next time
+        Set from =  $ZDateTime("0,0", 3, 1)
+
+    } Else {
+        If $Get(%request.Data("from",1)) = "" {
+            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+        } Else {
+            Set from = $Get(%request.Data("from",1))
+        }
+    }
+
+    Set to = $Get(%request.Data("to",1), $ZDateTime($Horolog, 3, 1))
     Set hash = $Get(%request.Data("hash",1))
 
     Try {
@@ -783,14 +871,30 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67166,35271.008847446</TimeChanged>
+<TimeChanged>67168,45597.1442118</TimeChanged>
 <TimeCreated>67166,35271.008847446</TimeCreated>
 
 <Method name="DailyStats">
 <ClassMethod>1</ClassMethod>
 <FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
-<Implementation><![CDATA[    Return ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
+<Implementation><![CDATA[
+    Set results = ##class(%ListOfObjects).%New()
+    If filter.namespace = "" {
+        Set namespaces = ..GetListNamespaces()
+        Set ptr = 0
+        While $ListNext(namespaces, ptr, namespace) {
+            Set filter.namespace = namespace
+            Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter, .results)
+        }
+        Set filter.namespace = ""
+    } Else {
+        Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
+    }
+
+    
+
+    Return results
 ]]></Implementation>
 </Method>
 
@@ -798,7 +902,20 @@ This method performs the following steps:
 <ClassMethod>1</ClassMethod>
 <FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
-<Implementation><![CDATA[    Return ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
+<Implementation><![CDATA[
+    Set resulsts = ##class(%ListOfObjects).%New()
+    If filter.namespace = "" {
+        Set namespaces = ..GetListNamespaces()
+        Set ptr = 0
+        While $ListNext(namespaces, ptr, namespace) {
+            Set filter.namespace = namespace
+            Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter, .results)
+        }
+        Set filter.namespace = ""
+    } Else {
+        Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
+    }
+    Return results
 ]]></Implementation>
 </Method>
 
@@ -881,9 +998,22 @@ This method performs the following steps:
 <Description>
 Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(resulsts,.stream)</Description>
 <ClassMethod>1</ClassMethod>
-<FormalSpec>results:%ListOfObjects,*stream:%Stream.GlobalCharacter=##class(%Stream.GlobalCharacter).%New()</FormalSpec>
+<FormalSpec>results:%ListOfObjects,*stream:%Stream.GlobalCharacter=##class(%Stream.GlobalCharacter).%New(),timeUnit:%String="ns"</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
+    Set timeFactor = 1
+    If timeUnit = "s" {
+        Set timeFactor = 1
+    } ElseIf timeUnit = "ms" {
+        Set timeFactor = 1000
+    } ElseIf timeUnit = "µs" {
+        Set timeFactor = 1000000
+    } ElseIf timeUnit = "ns" {
+        Set timeFactor = 1000000000
+    } Else {
+        $$$ThrowStatus($$$ERROR($$$GeneralError, "Invalid time unit only s, ms, us, ns are allowed"))
+    }
+
     Set replaceStr = "%%1%%"
     Set stream.LineTerminator = $Char(10)
 
@@ -923,7 +1053,7 @@ Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(resulsts,.stream
         Set line = line _ ",hash="""_ ..EscapeFieldValue(item.Hash) _ """"
         Set line = line _ ",statement="""_ ..EscapeFieldValue(item.Statement) _""""
         
-        Set line = line _ " " _ $ZDateTime($ZDTH(item.DateTime, 3, 1), -2)
+        Set line = line _ " " _ ($ZDateTime($ZDTH(item.DateTime, 3, 1), -2) * timeFactor)
         
         Do stream.WriteLine($Translate(line, $Char(13,10), ""))
     }

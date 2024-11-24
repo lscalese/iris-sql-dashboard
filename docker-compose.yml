@@ -18,18 +18,32 @@ services:
       #- TZ=Europe/London
       #- TZ=Asia/Dubai
       #- TZ=America/New_York
-      - INFLUX_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
+      - INFLUX_TOKEN=${IRIS_INFLUX_API_KEY}
 
   grafana:
     image: grafana/grafana-oss
     environment:
       - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+      - GRAFANA_INFLUX_API_KEY=${GRAFANA_INFLUX_API_KEY}
+      - INFLUX_ORG=${INFLUX_ORG}
     ports:
       - 3000:3000
     volumes:
       - ./grafana-storage:/var/lib/grafana
-      #- ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
-      #- ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
+      - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
+
+  # grafanatest:
+  #   image: grafana/grafana-oss
+  #   environment:
+  #     - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
+  #     - GRAFANA_INFLUX_API_KEY=${GRAFANA_INFLUX_API_KEY}
+  #     - INFLUX_ORG=${INFLUX_ORG}
+  #   ports:
+  #     - 3001:3000
+  #   volumes:
+  #     - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
+  #     - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
 
   influxdb2:
     image: influxdb:2

@@ -53,6 +53,8 @@ ClassMethod Init() As %Status
         set sc = $$$ADDSC(sc,##class(Security.Applications).Create(webName,.webProperties))
     }
 
+    Do ##class(dc.sqlstats.influxdb.PushStats).CreateOnDemandTask()
+
     Return sc
 }
 

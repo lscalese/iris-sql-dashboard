@@ -29,13 +29,20 @@ ClassMethod Ping() As %Status
 
 ClassMethod Daily() As %Status
 {
-    Set ^lsc("last-daily") = $ZDateTime($Horolog, 3, 1)
-
-    If $Get(%request.Data("from",1)) = "" {
-        Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
-        Set from = $Piece(from, " ", 1)
+    If $Get(%request.Data("from",1)) = "", $Get(%request.Data("to",1)) = "", '$Data(^dc.sqlstats.first("daily")) {
+        ; trick to send the historical data at the first call from Telegraf Agent
+        ; just kill ^dc.sqlstats.first in a terminal to reset
+        Set ^dc.sqlstats.first("daily") = $zdt($h,3,1) ; just a flat to avoid to send the historical data the next time
+        Set from =  $ZDate("0,0", 3)
     } Else {
-        Set from = $Piece($Get(%request.Data("from",1)), " ", 1)
+
+        If $Get(%request.Data("from",1)) = "" {
+            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+            Set from = $Piece(from, " ", 1)
+        } Else {
+            Set from = $Piece($Get(%request.Data("from",1)), " ", 1)
+        }
+
     }
 
     Set to = $Piece($Get(%request.Data("to",1), $ZDate($Horolog, 3)), " ", 1)
@@ -117,11 +124,20 @@ ClassMethod Hourly() As %Status
 {
     ;Set from = $Get(%request.Data("from",1), $ZDate($Horolog-15, 3))
     ;Set to = $Get(%request.Data("to",1), $ZDate($Horolog, 3))
-    If $Get(%request.Data("from",1)) = "" {
-        Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+     If $Get(%request.Data("from",1)) = "", $Get(%request.Data("to",1)) = "", '$Data(^dc.sqlstats.first("hourly")) {
+        ; trick to send the historical data at the first call from Telegraf Agent
+        ; just kill ^dc.sqlstats.first in a terminal to reset
+        Set ^dc.sqlstats.first("hourly") = $zdt($h,3,1) ; just a flat to avoid to send the historical data the next time
+        Set from =  $ZDateTime("0,0", 3, 1)
+
     } Else {
-        Set from = $Get(%request.Data("from",1))
+        If $Get(%request.Data("from",1)) = "" {
+            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+        } Else {
+            Set from = $Get(%request.Data("from",1))
+        }
     }
+
     Set to = $Get(%request.Data("to",1), $ZDateTime($Horolog, 3, 1))
     Set hash = $Get(%request.Data("hash",1))
 

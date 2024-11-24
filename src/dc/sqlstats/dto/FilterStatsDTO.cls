@@ -11,6 +11,6 @@ Property to As %TimeStamp;
 Property hash As %String;
 
 /// The namespace used to retrieve sql stats
-Property namespace As %String [ InitialExpression = {$Namespace} ];
+Property namespace As %String;
 
 }

@@ -34,10 +34,12 @@ Method OnTask() As %Status
     Set tSc = $$$OK
     
     Try {
-        If ..SendHistory {
-            Set tSc = ..SendData($ZdateTime("1,0", 3, 1))
+        If ..SendHistory || ($Get(^influx("last-to-success")) = "") {
+            Set tSc = ..SendData($ZdateTime("0,0", 3, 1))
         } Else {
-            Set tSc = ..SendData()
+            Set from = ^influx("last-to-success")
+            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, from)
+            Set tSc = ..SendData(from)
         }
     } Catch ex {
         Set tSc = ex.AsStatus()
@@ -49,7 +51,7 @@ Method OnTask() As %Status
 ClassMethod CreateOnDemandTask() As %Status
 {
 	Set sc = $$$OK
-	Return:..getTaskId()'="" $$$ERROR($$$GeneralError,"Task already exist")
+	Return:..getTaskId(,,..#HistoryTaskName)'="" $$$ERROR($$$GeneralError,"Task already exist")
 	Set task = ##class(%SYS.Task).%New()
 	Set task.Name=..#HistoryTaskName
 	Set task.Description="Push SQL Stats History to Influx DB."
@@ -71,7 +73,7 @@ ClassMethod CreateOnDemandTask() As %Status
 	Return sc
 }
 
-ClassMethod getTaskId(ByRef sc As %Status = {$$$OK}, className As %String = {..%ClassName(1)}) As %String
+ClassMethod getTaskId(ByRef sc As %Status = {$$$OK}, className As %String = {..%ClassName(1)}, name As %String) As %String
 {
 	Set id = "", tStatement = ##class(%SQL.Statement).%New()
 
@@ -83,7 +85,7 @@ ClassMethod getTaskId(ByRef sc As %Status = {$$$OK}, className As %String = {..%
 		
 		If $$$ISERR(sc) $$$ThrowStatus(sc)
 
-		If tResult.%Get("TaskClass") = className {
+		If tResult.%Get("TaskClass") = className, tResult.%Get("Name") = name {
 			Set id = tResult.%Get("ID")
 			Quit
 		}
@@ -91,14 +93,9 @@ ClassMethod getTaskId(ByRef sc As %Status = {$$$OK}, className As %String = {..%
 	Quit id
 }
 
-Method SendData(from As %TimeStamp = {$Get(^influx("last-to-success"), $ZDateTime("1,0", 3,1 ))}) As %Status
+Method SendData(from As %TimeStamp = {$ZDateTime(+$Horolog_",0", 3, 1)}) As %Status
 {
     Set sc = $$$OK
-
-    ; - 1 day to be sure to complete not calculated previous data
-    Set dailyFrom = ##class(%SYSTEM.SQL.Functions).DATEADD("dd", -1, from)
-    ; - 1 hour to be sure to complete not calculated previous data
-    Set hourlyFrom = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, from)
 
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
     Set filter.to = $ZDateTime($Horolog, 3, 1)
@@ -111,7 +108,8 @@ Method SendData(from As %TimeStamp = {$Get(^influx("last-to-success"), $ZDateTim
 
     While $ListNext(namespaces, ptr, namespace) {
         Set filter.namespace = namespace
-        Set filter.from = dailyFrom
+        Set filter.from = from
+        
         Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
         Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
         
@@ -119,7 +117,6 @@ Method SendData(from As %TimeStamp = {$Get(^influx("last-to-success"), $ZDateTim
             Return sc
         }
         
-        Set filter.from = hourlyFrom
         Set results = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
         Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
         

@@ -3,12 +3,39 @@ Class dc.sqlstats.services.SQLStats Extends %RegisteredObject
 
 ClassMethod DailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfObjects
 {
-    Return ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
+    Set results = ##class(%ListOfObjects).%New()
+    If filter.namespace = "" {
+        Set namespaces = ..GetListNamespaces()
+        Set ptr = 0
+        While $ListNext(namespaces, ptr, namespace) {
+            Set filter.namespace = namespace
+            Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter, .results)
+        }
+        Set filter.namespace = ""
+    } Else {
+        Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
+    }
+
+    
+
+    Return results
 }
 
 ClassMethod HourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfObjects
 {
-    Return ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
+    Set resulsts = ##class(%ListOfObjects).%New()
+    If filter.namespace = "" {
+        Set namespaces = ..GetListNamespaces()
+        Set ptr = 0
+        While $ListNext(namespaces, ptr, namespace) {
+            Set filter.namespace = namespace
+            Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter, .results)
+        }
+        Set filter.namespace = ""
+    } Else {
+        Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
+    }
+    Return results
 }
 
 ClassMethod ConvertToDynamicArray(results As %ListOfObjects, removeItemAfterConvert As %Boolean = {$$$YES}) As %DynamicArray
