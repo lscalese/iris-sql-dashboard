@@ -3,7 +3,8 @@
   <Document name="sql-stats-api.ZPM">
     <Module>
       <Name>sql-stats-api</Name>
-      <Version>0.0.1</Version>
+      <Description>API to expose sql stats for InfluxDB, Telegraf using 'line protocol' or in JSON.</Description>
+      <Version>0.9.0</Version>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
       <Resource Name="dc.sqlstats.PKG"/>
@@ -18,6 +19,7 @@
         MatchRoles=":%DB_${Namespace}"
         DispatchClass="dc.sqlstats.rest.Main"/>
       <Invoke Class="dc.sqlstats.services.Install" Method="Init" Phase="Compile" When="After" CheckStatus="true"></Invoke>
+      <SystemRequirements Version=">=2022.1" />
     </Module>
   </Document>
 </Export>

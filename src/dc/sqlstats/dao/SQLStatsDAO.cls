@@ -21,10 +21,20 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As 
         Set args($Increment(args)) = $Piece(filter.from, " ", 1)
         Set args($Increment(args)) = $Piece(filter.to, " ", 1)
 
-        Set sql = "SELECT t1.ID, t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands, t1.StatVariance, t1.StatRowCount "
+        Set sql = "SELECT t1.ID, t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands, t1.StatVariance "
                     _ "FROM INFORMATION_SCHEMA.STATEMENT_DAILY_STATS t1 "
                     _ "INNER JOIN INFORMATION_SCHEMA.STATEMENTS t2 ON t1.Statement = t2.Hash "
                     _ "WHERE t1.Day >= ? AND t1.Day <= ?"
+
+        Set irisMajorVersion = $SYSTEM.Version.GetMajor()
+        ; try to be compatible with older version
+        If irisMajorVersion < 2023  {
+            ; StatRowCount is not available in older version
+            Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
+            ; StatCommands is not available in older version
+            Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
+        }
+        
         
         If filter.hash '= "" {
             Set sql = sql _ " AND t2.Hash = ?"
@@ -97,10 +107,23 @@ ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As
         Set args($Increment(args)) = dayEnd
         Set args($Increment(args)) = endHour
 
-        Set sql = "SELECT ID, Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, StatVariance, StatRowCount, Day->Statement->Hash, Day->Statement->Statement "
+        Set sql = "SELECT ID, Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, StatVariance, Day->Statement->Hash, Day->Statement->Statement "
                     _ "FROM INFORMATION_SCHEMA.STATEMENT_HOURLY_STATS "
                     _ "WHERE (Day->Day > ? OR (Day->Day = ? AND ""Hour"" >= ?)) "
                     _ "AND (Day->Day < ? OR (Day->Day = ? AND ""Hour"" <= ?)) "
+        
+        Set irisMajorVersion = $SYSTEM.Version.GetMajor()
+
+        ; try to be compatible with older version
+        If irisMajorVersion < 2023  {
+            ; StatRowCount is not available in older version
+            Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
+            ; StatCommands is not available in older version
+            Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
+            
+            ; note : the table STATEMENT_DAILY_STATS exists from 2022.1
+            ; so consider this tools works only from 2022.1
+        }
         
         If filter.hash '= "" {
             Set sql = sql _ " AND Day->Statement->Hash = ?"

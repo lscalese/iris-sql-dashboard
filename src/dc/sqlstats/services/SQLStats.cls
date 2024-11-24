@@ -15,9 +15,6 @@ ClassMethod DailyStats(filter As dc.sqlstats.dto.FilterStatsDTO) As %ListOfObjec
     } Else {
         Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
     }
-
-    
-
     Return results
 }
 
