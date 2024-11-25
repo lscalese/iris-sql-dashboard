@@ -36,10 +36,10 @@ ClassMethod Init() As %Status
         Set sc = $$$ADDSC(sc,##class(Config.MapPackages).Create("%All","dc.sqlstats",.properties))
     }
 
-    If '##class(Security.Applications).Exists("/csp/sqlstats/api") {
+    Set webName = "/csp/sqlstats/api"
+    If '##class(Security.Applications).Exists(webName) {
         ; Should be done by zpm, but in case of manual installation, we need to do it here
         Set cspDirectory = $System.Util.InstallDirectory()_"csp/sqlstats/api/"
-        set webName = "/csp/irisweb"
         set webProperties("Path") = cspDirectory
         set webProperties("CookiePath")="/csp/sqlstats/api/"
         set webProperties("NameSpace") = ns

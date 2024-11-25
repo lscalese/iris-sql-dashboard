@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-24 15:18:01">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-25 10:29:11">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67166,35271.000970059</TimeChanged>
-<TimeCreated>67166,35271.000970059</TimeCreated>
+<TimeChanged>67169,30345.635489608</TimeChanged>
+<TimeCreated>67169,30345.635489608</TimeCreated>
 
 <Method name="GetDailyStats">
 <ClassMethod>1</ClassMethod>
@@ -28,10 +28,20 @@
         Set args($Increment(args)) = $Piece(filter.from, " ", 1)
         Set args($Increment(args)) = $Piece(filter.to, " ", 1)
 
-        Set sql = "SELECT t1.ID, t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands, t1.StatVariance, t1.StatRowCount "
+        Set sql = "SELECT t1.ID, t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands, t1.StatVariance "
                     _ "FROM INFORMATION_SCHEMA.STATEMENT_DAILY_STATS t1 "
                     _ "INNER JOIN INFORMATION_SCHEMA.STATEMENTS t2 ON t1.Statement = t2.Hash "
                     _ "WHERE t1.Day >= ? AND t1.Day <= ?"
+
+        Set irisMajorVersion = $SYSTEM.Version.GetMajor()
+        ; try to be compatible with older version
+        If irisMajorVersion < 2023  {
+            ; StatRowCount is not available in older version
+            Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
+            ; StatCommands is not available in older version
+            Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
+        }
+        
         
         If filter.hash '= "" {
             Set sql = sql _ " AND t2.Hash = ?"
@@ -108,10 +118,23 @@
         Set args($Increment(args)) = dayEnd
         Set args($Increment(args)) = endHour
 
-        Set sql = "SELECT ID, Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, StatVariance, StatRowCount, Day->Statement->Hash, Day->Statement->Statement "
+        Set sql = "SELECT ID, Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, StatVariance, Day->Statement->Hash, Day->Statement->Statement "
                     _ "FROM INFORMATION_SCHEMA.STATEMENT_HOURLY_STATS "
                     _ "WHERE (Day->Day > ? OR (Day->Day = ? AND ""Hour"" >= ?)) "
                     _ "AND (Day->Day < ? OR (Day->Day = ? AND ""Hour"" <= ?)) "
+        
+        Set irisMajorVersion = $SYSTEM.Version.GetMajor()
+
+        ; try to be compatible with older version
+        If irisMajorVersion < 2023  {
+            ; StatRowCount is not available in older version
+            Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
+            ; StatCommands is not available in older version
+            Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
+            
+            ; note : the table STATEMENT_DAILY_STATS exists from 2022.1
+            ; so consider this tools works only from 2022.1
+        }
         
         If filter.hash '= "" {
             Set sql = sql _ " AND Day->Statement->Hash = ?"
@@ -155,8 +178,8 @@
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67168,43852.904933737</TimeChanged>
-<TimeCreated>67166,35271.001049159</TimeCreated>
+<TimeChanged>67169,30345.647718256</TimeChanged>
+<TimeCreated>67169,30345.647718256</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -188,8 +211,8 @@ The namespace used to retrieve sql stats</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67166,35271.00193401</TimeChanged>
-<TimeCreated>67166,35271.00193401</TimeCreated>
+<TimeChanged>67169,30345.650971431</TimeChanged>
+<TimeCreated>67169,30345.650971431</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -289,8 +312,8 @@ daily or hourly</Description>
 curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
  --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
 <Super>%SYS.Task.Definition</Super>
-<TimeChanged>67168,1869.429405739</TimeChanged>
-<TimeCreated>67166,35271.002034329</TimeCreated>
+<TimeChanged>67169,30345.660037366</TimeChanged>
+<TimeCreated>67169,30345.660037366</TimeCreated>
 
 <Parameter name="TaskName">
 <Default>Influx DB - Push SQL Stats</Default>
@@ -361,7 +384,7 @@ It should be set to true for an on demand task.</Description>
         } Else {
             Set from = ^influx("last-to-success")
             Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, from)
-            Set tSc = ..SendData()
+            Set tSc = ..SendData(from)
         }
     } Catch ex {
         Set tSc = ex.AsStatus()
@@ -531,8 +554,8 @@ It should be set to true for an on demand task.</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67168,45396.844696882</TimeChanged>
-<TimeCreated>67166,35271.013217187</TimeCreated>
+<TimeChanged>67169,30345.684455951</TimeChanged>
+<TimeCreated>67169,30345.684455951</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -805,8 +828,8 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67166,35271.003840598</TimeChanged>
-<TimeCreated>67166,35271.003840598</TimeCreated>
+<TimeChanged>67169,37747.173370623</TimeChanged>
+<TimeCreated>67169,30345.679038741</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -846,10 +869,10 @@ This method performs the following steps:
         Set sc = $$$ADDSC(sc,##class(Config.MapPackages).Create("%All","dc.sqlstats",.properties))
     }
 
-    If '##class(Security.Applications).Exists("/csp/sqlstats/api") {
+    Set webName = "/csp/sqlstats/api"
+    If '##class(Security.Applications).Exists(webName) {
         ; Should be done by zpm, but in case of manual installation, we need to do it here
         Set cspDirectory = $System.Util.InstallDirectory()_"csp/sqlstats/api/"
-        set webName = "/csp/irisweb"
         set webProperties("Path") = cspDirectory
         set webProperties("CookiePath")="/csp/sqlstats/api/"
         set webProperties("NameSpace") = ns
@@ -863,6 +886,8 @@ This method performs the following steps:
         set sc = $$$ADDSC(sc,##class(Security.Applications).Create(webName,.webProperties))
     }
 
+    Do ##class(dc.sqlstats.influxdb.PushStats).CreateOnDemandTask()
+
     Return sc
 ]]></Implementation>
 </Method>
@@ -871,8 +896,8 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67168,45597.1442118</TimeChanged>
-<TimeCreated>67166,35271.008847446</TimeCreated>
+<TimeChanged>67169,30345.685118608</TimeChanged>
+<TimeCreated>67169,30345.685118608</TimeCreated>
 
 <Method name="DailyStats">
 <ClassMethod>1</ClassMethod>
@@ -891,9 +916,6 @@ This method performs the following steps:
     } Else {
         Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
     }
-
-    
-
     Return results
 ]]></Implementation>
 </Method>
