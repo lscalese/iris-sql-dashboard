@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-25 14:42:40">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-25 20:22:02">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67169,52648.264236158</TimeChanged>
-<TimeCreated>67169,30345.635489608</TimeCreated>
+<TimeChanged>67168,66320.801899587</TimeChanged>
+<TimeCreated>67166,35271.000970059</TimeCreated>
 
 <Method name="GetDailyStats">
 <ClassMethod>1</ClassMethod>
 <FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO,initList:%ListOfObjects=""</FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
 <Implementation><![CDATA[
-    Set ns = $Namespace
-
     If $IsObject(initList) {
         Set stats = initList
     } Else {
@@ -61,34 +59,19 @@
 
         Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
 
-        Kill:$Data(^||tmp.res) ^||tmp.res
-		
         While tRes.%Next() {
-            ; If we use SQLStatsDTO, we can add package mapping
-            ; Adding package mapping rebuilds all Extent indexes for the namespace            
-            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, tRes.Day_" 00:00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "daily", $Namespace)
-        }
-        
-        Set $Namespace = ns
-        
-        Set id = ""
-        For  {
-	    	Set id = $Order(^||tmp.res(id), 1, data)
-			Quit:id=""
-			Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.Id = id
-            Set stat.Hash = $ListGet(data, 1)
-            Set stat.Statement = $ListGet(data, 2)
-            Set stat.DateTime = $ListGet(data, 3)
-            Set stat.Count = $ListGet(data, 4)
-            Set stat.ExecutionTime = $ListGet(data, 5)
-            Set stat.Commands = $ListGet(data, 6)
-            Set stat.Variance = $ListGet(data, 7)
-            Set stat.RowCount = $ListGet(data, 8)
-            Set stat.Period = $ListGet(data, 9)
-            Set stat.Namespace = $ListGet(data, 10)
+            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Id = tRes.ID
+            Set stat.Hash = tRes.Hash
+            Set stat.Statement = tRes.Statement
+            Set stat.DateTime = tRes.Day_" 00:00:00"
+            Set stat.Count = tRes.StatCount
+            Set stat.ExecutionTime = tRes.StatTotal
+            Set stat.Commands = tRes.StatCommands
+            Set stat.Variance = tRes.StatVariance
+            Set stat.RowCount = tRes.StatRowCount
+            Set stat.Period = "daily"
             Do stats.Insert(stat)
-            Kill ^||tmp.res(id)
         }
     } Catch ex {
         Set sc = ex.AsStatus()
@@ -104,7 +87,6 @@
 <FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO,initList:%ListOfObjects=""</FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
 <Implementation><![CDATA[
-    Set ns = $Namespace
 
     If $IsObject(initList) {
         Set stats = initList
@@ -168,36 +150,21 @@
             $$$ThrowStatus(sc)
         }
 
-        Kill:$Data(^||tmp.res) ^||tmp.res
-		
         While tRes.%Next() {
-            ; If we use SQLStatsDTO, we can add package mapping
-            ; Adding package mapping rebuilds all Extent indexes for the namespace            
-            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "hourly", $Namespace)
-        }
-
-        Set $Namespace = ns
-
-        Set id = ""
-        For  {
-	    	Set id = $Order(^||tmp.res(id), 1, data)
-			Quit:id=""
-			Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.Id = id
-            Set stat.Hash = $ListGet(data, 1)
-            Set stat.Statement = $ListGet(data, 2)
-            Set stat.DateTime = $ListGet(data, 3)
-            Set stat.Count = $ListGet(data, 4)
-            Set stat.ExecutionTime = $ListGet(data, 5)
-            Set stat.Commands = $ListGet(data, 6)
-            Set stat.Variance = $ListGet(data, 7)
-            Set stat.RowCount = $ListGet(data, 8)
-            Set stat.Period = $ListGet(data, 9)
-            Set stat.Namespace = $ListGet(data, 10)
+            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Id = tRes.ID
+            Set stat.Hash = tRes.Hash
+            Set stat.Statement = tRes.Statement
+            Set stat.DateTime = $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00"
+            Set stat.Count = tRes.StatCount
+            Set stat.ExecutionTime = tRes.StatTotal
+            Set stat.Commands = tRes.StatCommands
+            Set stat.Variance = tRes.StatVariance
+            Set stat.RowCount = tRes.StatRowCount
+            Set stat.Period = "hourly"
             Do stats.Insert(stat)
-            Kill ^||tmp.res(id)
         }
-        
+
     } Catch ex {
         Set sc = ex.AsStatus()
         $$$ThrowStatus(sc)
@@ -211,8 +178,8 @@
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67169,30345.647718256</TimeChanged>
-<TimeCreated>67169,30345.647718256</TimeCreated>
+<TimeChanged>67168,43852.904933737</TimeChanged>
+<TimeCreated>67166,35271.001049159</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -244,8 +211,8 @@ The namespace used to retrieve sql stats</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67169,30345.650971431</TimeChanged>
-<TimeCreated>67169,30345.650971431</TimeCreated>
+<TimeChanged>67166,35271.00193401</TimeChanged>
+<TimeCreated>67166,35271.00193401</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -345,8 +312,8 @@ daily or hourly</Description>
 curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
  --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
 <Super>%SYS.Task.Definition</Super>
-<TimeChanged>67169,30345.660037366</TimeChanged>
-<TimeCreated>67169,30345.660037366</TimeCreated>
+<TimeChanged>67168,55620.240104853</TimeChanged>
+<TimeCreated>67166,35271.002034329</TimeCreated>
 
 <Parameter name="TaskName">
 <Default>Influx DB - Push SQL Stats</Default>
@@ -587,8 +554,8 @@ It should be set to true for an on demand task.</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67169,30345.684455951</TimeChanged>
-<TimeCreated>67169,30345.684455951</TimeCreated>
+<TimeChanged>67168,45396.844696882</TimeChanged>
+<TimeCreated>67166,35271.013217187</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -861,8 +828,8 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67169,47779.443196083</TimeChanged>
-<TimeCreated>67169,30345.679038741</TimeCreated>
+<TimeChanged>67168,82060.208367179</TimeChanged>
+<TimeCreated>67166,35271.003840598</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -888,11 +855,24 @@ This method performs the following steps:
     
     New $Namespace 
     Set $Namespace = "%SYS", p("Globals") = "%DEFAULTDB"
+    
+    If '##class(Config.Namespaces).Exists("%All") {
+        Set sc =##class(Config.Namespaces).Create("%All",.p)
+    }
 
-    Set webName = "/csp/sqlstats/api"
-    If '##class(Security.Applications).Exists(webName) {
+    Kill p
+
+    Do ##class(Config.Namespaces).Get(ns,.p)
+
+    If '##class(Config.MapPackages).Exists("%All","dc.sqlstats") {
+        Set properties("Database") = p("Routines")
+        Set sc = $$$ADDSC(sc,##class(Config.MapPackages).Create("%All","dc.sqlstats",.properties))
+    }
+
+    If '##class(Security.Applications).Exists("/csp/sqlstats/api") {
         ; Should be done by zpm, but in case of manual installation, we need to do it here
         Set cspDirectory = $System.Util.InstallDirectory()_"csp/sqlstats/api/"
+        set webName = "/csp/irisweb"
         set webProperties("Path") = cspDirectory
         set webProperties("CookiePath")="/csp/sqlstats/api/"
         set webProperties("NameSpace") = ns
@@ -906,7 +886,6 @@ This method performs the following steps:
         set sc = $$$ADDSC(sc,##class(Security.Applications).Create(webName,.webProperties))
     }
 
-    Set $Namespace = ns
     Do ##class(dc.sqlstats.influxdb.PushStats).CreateOnDemandTask()
 
     Return sc
@@ -917,8 +896,8 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67169,41912.484792676</TimeChanged>
-<TimeCreated>67169,30345.685118608</TimeCreated>
+<TimeChanged>67169,71657.864849801</TimeChanged>
+<TimeCreated>67166,35271.008847446</TimeCreated>
 
 <Method name="DailyStats">
 <ClassMethod>1</ClassMethod>
@@ -1005,7 +984,7 @@ This method performs the following steps:
 
 <Method name="CreateInfluxFile">
 <ClassMethod>1</ClassMethod>
-<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb_line.txt"</FormalSpec>
+<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt"</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
     If ##class(%File).Exists(fileName) {

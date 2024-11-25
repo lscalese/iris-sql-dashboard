@@ -5,6 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     #restart: always
+    container_name: iris
     ports:
       - 1972
       - 63077:52773
@@ -22,6 +23,7 @@ services:
 
   grafana:
     image: grafana/grafana-oss
+    container_name: grafana
     environment:
       - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
       - GRAFANA_INFLUX_API_KEY=${GRAFANA_INFLUX_API_KEY}
@@ -32,6 +34,55 @@ services:
       - ./grafana-storage:/var/lib/grafana
       - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
+
+  influxdb2:
+    image: influxdb:2
+    container_name: influxdb2
+    ports:
+      - 8086:8086
+    volumes:
+      - ./influxdb2-storage:/var/lib/influxdb2
+      - ./influxdb2-config:/etc/influxdb2
+      - ./init-influxdb.sh:/docker-entrypoint-initdb.d/init-influxdb.sh
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${DOCKER_INFLUXDB_INIT_PASSWORD:-sysadmin}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUX_ORG:-dc}
+      - DOCKER_INFLUXDB_INIT_BUCKET=IRIS_SQL_STATS
+      - DOCKER_INFLUXDB_INIT_RETENTION=0
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
+
+  telegraf:
+    image: telegraf
+    container_name: telegraf
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf
+    environment:
+      - INFLUX_TOKEN=${TELEGRAF_INFLUX_API_KEY}
+      - INFLUX_ORG=${INFLUX_ORG:-dc}
+      - IRIS_USER=${IRIS_USER}
+      - IRIS_PASSWORD=${IRIS_PASSWORD}
+    depends_on:
+      - influxdb2
+
+  # Telegraf instance to scan a directory contains files to be processed
+  # fils must be in influx line protocol format
+  telegraf-directory-scan:
+    image: telegraf
+    container_name: telegraf-directory-scan
+    volumes:
+      - ./telegraf-directory-scan/in/:/etc/telegraf/in/
+      - ./telegraf-directory-scan/done:/etc/telegraf/done/
+      - ./telegraf-directory-scan/err/:/etc/telegraf/err/
+      - ./telegraf-directory-scan/telegraf-directory-scan.conf:/etc/telegraf/telegraf.conf
+    #command: [ "--once"]
+    environment:
+      - INFLUX_TOKEN=${TELEGRAF_INFLUX_API_KEY}
+      - INFLUX_ORG=${INFLUX_ORG:-dc}
+    depends_on:
+      - influxdb2
 
   # grafanatest:
   #   image: grafana/grafana-oss
@@ -44,32 +95,3 @@ services:
   #   volumes:
   #     - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
   #     - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
-
-  influxdb2:
-    image: influxdb:2
-    ports:
-      - 8086:8086
-    volumes:
-      - ./influxdb2-storage:/var/lib/influxdb2
-      - ./influxdb2-config:/etc/influxdb2
-      - ./init-influxdb.sh:/docker-entrypoint-initdb.d/init-influxdb.sh
-      - ./telegraf.conf:/etc/telegraf/telegraf.conf
-    environment:
-      - DOCKER_INFLUXDB_INIT_MODE=setup
-      - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=${DOCKER_INFLUXDB_INIT_PASSWORD:-sysadmin}
-      - DOCKER_INFLUXDB_INIT_ORG=dc
-      - DOCKER_INFLUXDB_INIT_BUCKET=IRIS_SQL_STATS
-      - DOCKER_INFLUXDB_INIT_RETENTION=0
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
-
-  telegraf:
-    image: telegraf
-    volumes:
-      - ./telegraf.conf:/etc/telegraf/telegraf.conf
-    environment:
-      - INFLUX_TOKEN=${TELEGRAF_INFLUX_API_KEY}
-      - IRIS_USER=${IRIS_USER}
-      - IRIS_PASSWORD=${IRIS_PASSWORD}
-    depends_on:
-      - influxdb2

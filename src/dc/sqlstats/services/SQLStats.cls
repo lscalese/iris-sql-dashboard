@@ -69,7 +69,7 @@ ClassMethod GetListNamespaces() As %List
     Return list
 }
 
-ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb_line.txt") As %Status
+ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", namespaces As %List = {..GetListNamespaces()}, split As %Boolean = {$$$NO}, splitSize As %Integer = 1000) As %Status
 {
     If ##class(%File).Exists(fileName) {
         Do ##class(%File).Delete(fileName)
@@ -79,7 +79,7 @@ ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb
     Set filter.from = $ZDateTime("0,0", 3, 1)
     Set filter.to = $ZDateTime($Horolog, 3, 1)
     
-    Set ptr = 0, namespaces = ..GetListNamespaces(), stream = ##class(%Stream.FileCharacter).%New()
+    Set ptr = 0, stream = ##class(%Stream.FileCharacter).%New()
     Set stream.StreamFormatWrite = 0
     Set stream.LineTerminator = $Char(10)
 
@@ -99,7 +99,63 @@ ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb
         }
     }
 
-    Return stream.%Save()
+    Set sc = stream.%Save()
+
+    If $$$ISERR(sc) {
+        Return sc
+    }
+
+    If 'split {
+        Return sc
+    }
+
+    Set sc = ..SplitInluxFile(fileName, splitSize)
+
+    If $$$ISOK(sc) {
+        Do ##class(%File).Delete(fileName)
+    }
+
+    Return sc
+}
+
+ClassMethod SplitInluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", splitSize As %Integer = 1000) As %Status
+{
+    Set sc = $$$OK
+
+    If '##class(%File).Exists(fileName) {
+        Return $$$ERROR($$$GeneralError, "File not found")
+    }
+
+    Set splitFile = ##class(%Stream.FileCharacter).%New()
+    
+    Do newSplitFile
+
+    Set file = ##class(%Stream.FileCharacter).%New()
+    Do file.LinkToFile(fileName)
+
+    While 'file.AtEnd {
+        Set line = file.ReadLine()
+        Do splitFile.WriteLine(line)
+        Do $Increment(count)
+        If count = splitSize {
+            Set sc = splitFile.%Save()
+            If $$$ISERR(sc) {
+                Return sc
+            }
+            Do newSplitFile
+            Set count = 0
+        }
+    }
+
+    Set sc = splitFile.%Save()
+
+    Return sc
+
+newSplitFile
+    Do $Increment(fileNumber)
+    Set splitFile = ##class(%Stream.FileCharacter).%New()   
+    Do splitFile.LinkToFile(fileName _ "." _ $tr($j(fileNumber, 3), " ", "0"))
+    Quit
 }
 
 /// Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(resulsts,.stream)
