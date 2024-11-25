@@ -6,7 +6,7 @@ Class dc.sqlstats.dto.SQLStatsDTO Extends (%RegisteredObject, %JSON.Adaptor)
 Property Statement As %String(%JSONFIELDNAME = "statement");
 
 /// The hash of the SQL statement (used in INFORMATION_SCHEMA)
-Property Hash As %String(%JSONFIELDNAME = "hahs");
+Property Hash As %String(%JSONFIELDNAME = "hash");
 
 /// The number of times the SQL statement was executed
 Property Count As %Integer(%JSONFIELDNAME = "count");
