@@ -3,6 +3,8 @@ Class dc.sqlstats.dao.SQLStatsDAO Extends %RegisteredObject
 
 ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As %ListOfObjects = "") As %ListOfObjects
 {
+    Set ns = $Namespace
+
     If $IsObject(initList) {
         Set stats = initList
     } Else {
@@ -52,19 +54,34 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As 
 
         Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
 
+        Kill:$Data(^||tmp.res) ^||tmp.res
+		
         While tRes.%Next() {
-            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.Id = tRes.ID
-            Set stat.Hash = tRes.Hash
-            Set stat.Statement = tRes.Statement
-            Set stat.DateTime = tRes.Day_" 00:00:00"
-            Set stat.Count = tRes.StatCount
-            Set stat.ExecutionTime = tRes.StatTotal
-            Set stat.Commands = tRes.StatCommands
-            Set stat.Variance = tRes.StatVariance
-            Set stat.RowCount = tRes.StatRowCount
-            Set stat.Period = "daily"
+            ; If we use SQLStatsDTO, we can add package mapping
+            ; Adding package mapping rebuilds all Extent indexes for the namespace            
+            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, tRes.Day_" 00:00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "daily", $Namespace)
+        }
+        
+        Set $Namespace = ns
+        
+        Set id = ""
+        For  {
+	    	Set id = $Order(^||tmp.res(id), 1, data)
+			Quit:id=""
+			Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Id = id
+            Set stat.Hash = $ListGet(data, 1)
+            Set stat.Statement = $ListGet(data, 2)
+            Set stat.DateTime = $ListGet(data, 3)
+            Set stat.Count = $ListGet(data, 4)
+            Set stat.ExecutionTime = $ListGet(data, 5)
+            Set stat.Commands = $ListGet(data, 6)
+            Set stat.Variance = $ListGet(data, 7)
+            Set stat.RowCount = $ListGet(data, 8)
+            Set stat.Period = $ListGet(data, 9)
+            Set stat.Namespace = $ListGet(data, 10)
             Do stats.Insert(stat)
+            Kill ^||tmp.res(id)
         }
     } Catch ex {
         Set sc = ex.AsStatus()
@@ -76,6 +93,7 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As 
 
 ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As %ListOfObjects = "") As %ListOfObjects
 {
+    Set ns = $Namespace
 
     If $IsObject(initList) {
         Set stats = initList
@@ -139,21 +157,36 @@ ClassMethod GetHourlyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As
             $$$ThrowStatus(sc)
         }
 
+        Kill:$Data(^||tmp.res) ^||tmp.res
+		
         While tRes.%Next() {
-            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.Id = tRes.ID
-            Set stat.Hash = tRes.Hash
-            Set stat.Statement = tRes.Statement
-            Set stat.DateTime = $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00"
-            Set stat.Count = tRes.StatCount
-            Set stat.ExecutionTime = tRes.StatTotal
-            Set stat.Commands = tRes.StatCommands
-            Set stat.Variance = tRes.StatVariance
-            Set stat.RowCount = tRes.StatRowCount
-            Set stat.Period = "hourly"
-            Do stats.Insert(stat)
+            ; If we use SQLStatsDTO, we can add package mapping
+            ; Adding package mapping rebuilds all Extent indexes for the namespace            
+            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "hourly", $Namespace)
         }
 
+        Set $Namespace = ns
+
+        Set id = ""
+        For  {
+	    	Set id = $Order(^||tmp.res(id), 1, data)
+			Quit:id=""
+			Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Id = id
+            Set stat.Hash = $ListGet(data, 1)
+            Set stat.Statement = $ListGet(data, 2)
+            Set stat.DateTime = $ListGet(data, 3)
+            Set stat.Count = $ListGet(data, 4)
+            Set stat.ExecutionTime = $ListGet(data, 5)
+            Set stat.Commands = $ListGet(data, 6)
+            Set stat.Variance = $ListGet(data, 7)
+            Set stat.RowCount = $ListGet(data, 8)
+            Set stat.Period = $ListGet(data, 9)
+            Set stat.Namespace = $ListGet(data, 10)
+            Do stats.Insert(stat)
+            Kill ^||tmp.res(id)
+        }
+        
     } Catch ex {
         Set sc = ex.AsStatus()
         $$$ThrowStatus(sc)

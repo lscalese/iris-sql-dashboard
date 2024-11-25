@@ -45,9 +45,12 @@ ClassMethod ConvertToDynamicArray(results As %ListOfObjects, removeItemAfterConv
         Set item = results.GetNext(.key)
         Quit:key=""
 
-        Do item.%JSONExportToString(.json)
-        Do array.%Push({}.%FromJSON(json))
-
+        If item.%IsA("%DynamicObject") {
+            Do array.%Push(item)
+        } Else {
+            Do item.%JSONExportToString(.json)
+            Do array.%Push({}.%FromJSON(json))
+        }
         Do results.RemoveAt(key)
     }
     Return array

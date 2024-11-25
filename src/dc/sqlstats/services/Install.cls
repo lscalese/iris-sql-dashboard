@@ -22,19 +22,6 @@ ClassMethod Init() As %Status
     
     New $Namespace 
     Set $Namespace = "%SYS", p("Globals") = "%DEFAULTDB"
-    
-    If '##class(Config.Namespaces).Exists("%All") {
-        Set sc =##class(Config.Namespaces).Create("%All",.p)
-    }
-
-    Kill p
-
-    Do ##class(Config.Namespaces).Get(ns,.p)
-
-    If '##class(Config.MapPackages).Exists("%All","dc.sqlstats") {
-        Set properties("Database") = p("Routines")
-        Set sc = $$$ADDSC(sc,##class(Config.MapPackages).Create("%All","dc.sqlstats",.properties))
-    }
 
     Set webName = "/csp/sqlstats/api"
     If '##class(Security.Applications).Exists(webName) {
@@ -53,6 +40,7 @@ ClassMethod Init() As %Status
         set sc = $$$ADDSC(sc,##class(Security.Applications).Create(webName,.webProperties))
     }
 
+    Set $Namespace = ns
     Do ##class(dc.sqlstats.influxdb.PushStats).CreateOnDemandTask()
 
     Return sc
