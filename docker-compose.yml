@@ -4,7 +4,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    #restart: always
     container_name: iris
     ports:
       - 1972
@@ -52,7 +51,6 @@ services:
       - DOCKER_INFLUXDB_INIT_ORG=${INFLUX_ORG:-dc}
       - DOCKER_INFLUXDB_INIT_BUCKET=IRIS_SQL_STATS
       - DOCKER_INFLUXDB_INIT_RETENTION=0
-      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${DOCKER_INFLUXDB_INIT_ADMIN_TOKEN}
 
   telegraf:
     image: telegraf

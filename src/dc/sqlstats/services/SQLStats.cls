@@ -71,6 +71,12 @@ ClassMethod GetListNamespaces() As %List
 
 ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", namespaces As %List = {..GetListNamespaces()}, split As %Boolean = {$$$NO}, splitSize As %Integer = 1000) As %Status
 {
+
+    Set directory = ##class(%File).GetDirectory(fileName)
+    If '##class(%File).Exists(directory) {
+        Do ##class(%File).CreateDirectoryChain(directory)
+    }
+
     If ##class(%File).Exists(fileName) {
         Do ##class(%File).Delete(fileName)
     }

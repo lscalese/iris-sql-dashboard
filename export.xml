@@ -1,15 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-25 20:22:02">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-26 10:10:05">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67168,66320.801899587</TimeChanged>
-<TimeCreated>67166,35271.000970059</TimeCreated>
+<TimeChanged>67170,31774.743035905</TimeChanged>
+<TimeCreated>67170,31774.743035905</TimeCreated>
 
 <Method name="GetDailyStats">
 <ClassMethod>1</ClassMethod>
 <FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO,initList:%ListOfObjects=""</FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
 <Implementation><![CDATA[
+    Set ns = $Namespace
+
     If $IsObject(initList) {
         Set stats = initList
     } Else {
@@ -59,19 +61,34 @@
 
         Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
 
+        Kill:$Data(^||tmp.res) ^||tmp.res
+		
         While tRes.%Next() {
-            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.Id = tRes.ID
-            Set stat.Hash = tRes.Hash
-            Set stat.Statement = tRes.Statement
-            Set stat.DateTime = tRes.Day_" 00:00:00"
-            Set stat.Count = tRes.StatCount
-            Set stat.ExecutionTime = tRes.StatTotal
-            Set stat.Commands = tRes.StatCommands
-            Set stat.Variance = tRes.StatVariance
-            Set stat.RowCount = tRes.StatRowCount
-            Set stat.Period = "daily"
+            ; If we use SQLStatsDTO, we can add package mapping
+            ; Adding package mapping rebuilds all Extent indexes for the namespace            
+            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, tRes.Day_" 00:00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "daily", $Namespace)
+        }
+        
+        Set $Namespace = ns
+        
+        Set id = ""
+        For  {
+	    	Set id = $Order(^||tmp.res(id), 1, data)
+			Quit:id=""
+			Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Id = id
+            Set stat.Hash = $ListGet(data, 1)
+            Set stat.Statement = $ListGet(data, 2)
+            Set stat.DateTime = $ListGet(data, 3)
+            Set stat.Count = $ListGet(data, 4)
+            Set stat.ExecutionTime = $ListGet(data, 5)
+            Set stat.Commands = $ListGet(data, 6)
+            Set stat.Variance = $ListGet(data, 7)
+            Set stat.RowCount = $ListGet(data, 8)
+            Set stat.Period = $ListGet(data, 9)
+            Set stat.Namespace = $ListGet(data, 10)
             Do stats.Insert(stat)
+            Kill ^||tmp.res(id)
         }
     } Catch ex {
         Set sc = ex.AsStatus()
@@ -87,6 +104,7 @@
 <FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO,initList:%ListOfObjects=""</FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
 <Implementation><![CDATA[
+    Set ns = $Namespace
 
     If $IsObject(initList) {
         Set stats = initList
@@ -150,21 +168,36 @@
             $$$ThrowStatus(sc)
         }
 
+        Kill:$Data(^||tmp.res) ^||tmp.res
+		
         While tRes.%Next() {
-            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
-            Set stat.Id = tRes.ID
-            Set stat.Hash = tRes.Hash
-            Set stat.Statement = tRes.Statement
-            Set stat.DateTime = $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00"
-            Set stat.Count = tRes.StatCount
-            Set stat.ExecutionTime = tRes.StatTotal
-            Set stat.Commands = tRes.StatCommands
-            Set stat.Variance = tRes.StatVariance
-            Set stat.RowCount = tRes.StatRowCount
-            Set stat.Period = "hourly"
-            Do stats.Insert(stat)
+            ; If we use SQLStatsDTO, we can add package mapping
+            ; Adding package mapping rebuilds all Extent indexes for the namespace            
+            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "hourly", $Namespace)
         }
 
+        Set $Namespace = ns
+
+        Set id = ""
+        For  {
+	    	Set id = $Order(^||tmp.res(id), 1, data)
+			Quit:id=""
+			Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set stat.Id = id
+            Set stat.Hash = $ListGet(data, 1)
+            Set stat.Statement = $ListGet(data, 2)
+            Set stat.DateTime = $ListGet(data, 3)
+            Set stat.Count = $ListGet(data, 4)
+            Set stat.ExecutionTime = $ListGet(data, 5)
+            Set stat.Commands = $ListGet(data, 6)
+            Set stat.Variance = $ListGet(data, 7)
+            Set stat.RowCount = $ListGet(data, 8)
+            Set stat.Period = $ListGet(data, 9)
+            Set stat.Namespace = $ListGet(data, 10)
+            Do stats.Insert(stat)
+            Kill ^||tmp.res(id)
+        }
+        
     } Catch ex {
         Set sc = ex.AsStatus()
         $$$ThrowStatus(sc)
@@ -178,8 +211,8 @@
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67168,43852.904933737</TimeChanged>
-<TimeCreated>67166,35271.001049159</TimeCreated>
+<TimeChanged>67170,31774.744335874</TimeChanged>
+<TimeCreated>67170,31774.744335874</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -211,8 +244,8 @@ The namespace used to retrieve sql stats</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67166,35271.00193401</TimeChanged>
-<TimeCreated>67166,35271.00193401</TimeCreated>
+<TimeChanged>67170,31774.745941875</TimeChanged>
+<TimeCreated>67170,31774.745941875</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -225,7 +258,7 @@ The SQL statement</Description>
 <Description>
 The hash of the SQL statement (used in INFORMATION_SCHEMA)</Description>
 <Type>%String</Type>
-<Parameter name="%JSONFIELDNAME" value="hahs"/>
+<Parameter name="%JSONFIELDNAME" value="hash"/>
 </Property>
 
 <Property name="Count">
@@ -312,8 +345,8 @@ daily or hourly</Description>
 curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
  --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
 <Super>%SYS.Task.Definition</Super>
-<TimeChanged>67168,55620.240104853</TimeChanged>
-<TimeCreated>67166,35271.002034329</TimeCreated>
+<TimeChanged>67170,31774.772896043</TimeChanged>
+<TimeCreated>67170,31774.772896043</TimeCreated>
 
 <Parameter name="TaskName">
 <Default>Influx DB - Push SQL Stats</Default>
@@ -554,8 +587,8 @@ It should be set to true for an on demand task.</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67168,45396.844696882</TimeChanged>
-<TimeCreated>67166,35271.013217187</TimeCreated>
+<TimeChanged>67170,35795.409827569</TimeChanged>
+<TimeCreated>67170,31774.785337733</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -592,22 +625,13 @@ It should be set to true for an on demand task.</Description>
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-    If $Get(%request.Data("from",1)) = "", $Get(%request.Data("to",1)) = "", '$Data(^dc.sqlstats.first("daily")) {
-        ; trick to send the historical data at the first call from Telegraf Agent
-        ; just kill ^dc.sqlstats.first in a terminal to reset
-        Set ^dc.sqlstats.first("daily") = $zdt($h,3,1) ; just a flat to avoid to send the historical data the next time
-        Set from =  $ZDate("0,0", 3)
+    If $Get(%request.Data("from",1)) = "" {
+        Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
+        Set from = $Piece(from, " ", 1)
     } Else {
-
-        If $Get(%request.Data("from",1)) = "" {
-            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
-            Set from = $Piece(from, " ", 1)
-        } Else {
-            Set from = $Piece($Get(%request.Data("from",1)), " ", 1)
-        }
-
+        Set from = $Piece($Get(%request.Data("from",1)), " ", 1)
     }
-
+    
     Set to = $Piece($Get(%request.Data("to",1), $ZDate($Horolog, 3)), " ", 1)
     Set hash = $Get(%request.Data("hash",1))
 
@@ -688,20 +712,11 @@ It should be set to true for an on demand task.</Description>
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-    ;Set from = $Get(%request.Data("from",1), $ZDate($Horolog-15, 3))
-    ;Set to = $Get(%request.Data("to",1), $ZDate($Horolog, 3))
-     If $Get(%request.Data("from",1)) = "", $Get(%request.Data("to",1)) = "", '$Data(^dc.sqlstats.first("hourly")) {
-        ; trick to send the historical data at the first call from Telegraf Agent
-        ; just kill ^dc.sqlstats.first in a terminal to reset
-        Set ^dc.sqlstats.first("hourly") = $zdt($h,3,1) ; just a flat to avoid to send the historical data the next time
-        Set from =  $ZDateTime("0,0", 3, 1)
 
+    If $Get(%request.Data("from",1)) = "" {
+        Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
     } Else {
-        If $Get(%request.Data("from",1)) = "" {
-            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
-        } Else {
-            Set from = $Get(%request.Data("from",1))
-        }
+        Set from = $Get(%request.Data("from",1))
     }
 
     Set to = $Get(%request.Data("to",1), $ZDateTime($Horolog, 3, 1))
@@ -828,8 +843,8 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67168,82060.208367179</TimeChanged>
-<TimeCreated>67166,35271.003840598</TimeCreated>
+<TimeChanged>67170,31774.765587682</TimeChanged>
+<TimeCreated>67170,31774.765587682</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -855,24 +870,11 @@ This method performs the following steps:
     
     New $Namespace 
     Set $Namespace = "%SYS", p("Globals") = "%DEFAULTDB"
-    
-    If '##class(Config.Namespaces).Exists("%All") {
-        Set sc =##class(Config.Namespaces).Create("%All",.p)
-    }
 
-    Kill p
-
-    Do ##class(Config.Namespaces).Get(ns,.p)
-
-    If '##class(Config.MapPackages).Exists("%All","dc.sqlstats") {
-        Set properties("Database") = p("Routines")
-        Set sc = $$$ADDSC(sc,##class(Config.MapPackages).Create("%All","dc.sqlstats",.properties))
-    }
-
-    If '##class(Security.Applications).Exists("/csp/sqlstats/api") {
+    Set webName = "/csp/sqlstats/api"
+    If '##class(Security.Applications).Exists(webName) {
         ; Should be done by zpm, but in case of manual installation, we need to do it here
         Set cspDirectory = $System.Util.InstallDirectory()_"csp/sqlstats/api/"
-        set webName = "/csp/irisweb"
         set webProperties("Path") = cspDirectory
         set webProperties("CookiePath")="/csp/sqlstats/api/"
         set webProperties("NameSpace") = ns
@@ -886,6 +888,7 @@ This method performs the following steps:
         set sc = $$$ADDSC(sc,##class(Security.Applications).Create(webName,.webProperties))
     }
 
+    Set $Namespace = ns
     Do ##class(dc.sqlstats.influxdb.PushStats).CreateOnDemandTask()
 
     Return sc
@@ -896,8 +899,8 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67169,71657.864849801</TimeChanged>
-<TimeCreated>67166,35271.008847446</TimeCreated>
+<TimeChanged>67170,36598.835478115</TimeChanged>
+<TimeCreated>67170,31774.791347877</TimeCreated>
 
 <Method name="DailyStats">
 <ClassMethod>1</ClassMethod>
@@ -984,9 +987,15 @@ This method performs the following steps:
 
 <Method name="CreateInfluxFile">
 <ClassMethod>1</ClassMethod>
-<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt"</FormalSpec>
+<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",namespaces:%List=..GetListNamespaces(),split:%Boolean=$$$NO,splitSize:%Integer=1000</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
+
+    Set directory = ##class(%File).GetDirectory(fileName)
+    If '##class(%File).Exists(directory) {
+        Do ##class(%File).CreateDirectoryChain(directory)
+    }
+
     If ##class(%File).Exists(fileName) {
         Do ##class(%File).Delete(fileName)
     }
@@ -995,7 +1004,7 @@ This method performs the following steps:
     Set filter.from = $ZDateTime("0,0", 3, 1)
     Set filter.to = $ZDateTime($Horolog, 3, 1)
     
-    Set ptr = 0, namespaces = ..GetListNamespaces(), stream = ##class(%Stream.FileCharacter).%New()
+    Set ptr = 0, stream = ##class(%Stream.FileCharacter).%New()
     Set stream.StreamFormatWrite = 0
     Set stream.LineTerminator = $Char(10)
 
@@ -1015,7 +1024,67 @@ This method performs the following steps:
         }
     }
 
-    Return stream.%Save()
+    Set sc = stream.%Save()
+
+    If $$$ISERR(sc) {
+        Return sc
+    }
+
+    If 'split {
+        Return sc
+    }
+
+    Set sc = ..SplitInluxFile(fileName, splitSize)
+
+    If $$$ISOK(sc) {
+        Do ##class(%File).Delete(fileName)
+    }
+
+    Return sc
+]]></Implementation>
+</Method>
+
+<Method name="SplitInluxFile">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",splitSize:%Integer=1000</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set sc = $$$OK
+
+    If '##class(%File).Exists(fileName) {
+        Return $$$ERROR($$$GeneralError, "File not found")
+    }
+
+    Set splitFile = ##class(%Stream.FileCharacter).%New()
+    
+    Do newSplitFile
+
+    Set file = ##class(%Stream.FileCharacter).%New()
+    Do file.LinkToFile(fileName)
+
+    While 'file.AtEnd {
+        Set line = file.ReadLine()
+        Do splitFile.WriteLine(line)
+        Do $Increment(count)
+        If count = splitSize {
+            Set sc = splitFile.%Save()
+            If $$$ISERR(sc) {
+                Return sc
+            }
+            Do newSplitFile
+            Set count = 0
+        }
+    }
+
+    Set sc = splitFile.%Save()
+
+    Return sc
+
+newSplitFile
+    Do $Increment(fileNumber)
+    Set splitFile = ##class(%Stream.FileCharacter).%New()   
+    Do splitFile.LinkToFile(fileName _ "." _ $tr($j(fileNumber, 3), " ", "0"))
+    Quit
 ]]></Implementation>
 </Method>
 
