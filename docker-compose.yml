@@ -15,10 +15,6 @@ services:
     # Put your timezone here (available list code here https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
     environment:
       - TZ=${TZ:-Europe/Paris}
-      #- TZ=Europe/London
-      #- TZ=Asia/Dubai
-      #- TZ=America/New_York
-      - INFLUX_TOKEN=${IRIS_INFLUX_API_KEY}
 
   grafana:
     image: grafana/grafana-oss
@@ -43,7 +39,9 @@ services:
       - ./influxdb2-storage:/var/lib/influxdb2
       - ./influxdb2-config:/etc/influxdb2
       - ./init-influxdb.sh:/docker-entrypoint-initdb.d/init-influxdb.sh
-      - ./telegraf.conf:/etc/telegraf/telegraf.conf
+      # useful for first start, it allows to init-influxdb.sh to set API KEYS in the .env file
+      - ./.env:/etc/telegraf/docker-envfile.txt
+
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
@@ -55,30 +53,17 @@ services:
   telegraf:
     image: telegraf
     container_name: telegraf
+    command: [ "--config-directory", "/etc/telegraf/config" ]
     volumes:
-      - ./telegraf.conf:/etc/telegraf/telegraf.conf
+      - ./telegraf/config:/etc/telegraf/config
+      - ./telegraf/in:/etc/telegraf/in
+      - ./telegraf/done:/etc/telegraf/done
+      - ./telegraf/err:/etc/telegraf/err
     environment:
       - INFLUX_TOKEN=${TELEGRAF_INFLUX_API_KEY}
       - INFLUX_ORG=${INFLUX_ORG:-dc}
       - IRIS_USER=${IRIS_USER}
       - IRIS_PASSWORD=${IRIS_PASSWORD}
-    depends_on:
-      - influxdb2
-
-  # Telegraf instance to scan a directory contains files to be processed
-  # fils must be in influx line protocol format
-  telegraf-directory-scan:
-    image: telegraf
-    container_name: telegraf-directory-scan
-    volumes:
-      - ./telegraf-directory-scan/in/:/etc/telegraf/in/
-      - ./telegraf-directory-scan/done:/etc/telegraf/done/
-      - ./telegraf-directory-scan/err/:/etc/telegraf/err/
-      - ./telegraf-directory-scan/telegraf-directory-scan.conf:/etc/telegraf/telegraf.conf
-    #command: [ "--once"]
-    environment:
-      - INFLUX_TOKEN=${TELEGRAF_INFLUX_API_KEY}
-      - INFLUX_ORG=${INFLUX_ORG:-dc}
     depends_on:
       - influxdb2
 

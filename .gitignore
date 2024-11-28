@@ -4,7 +4,8 @@ notes.txt
 influxdb2-storage/
 influxdb2-config/
 .env
-telegraf-directory-scan/done/
-telegraf-directory-scan/err/
-telegraf-directory-scan/in/
+telegraf/done/
+telegraf/err/
+telegraf/in/
+telegraf/archives/
 influxdb-lines.txt
