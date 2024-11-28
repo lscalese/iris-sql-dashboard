@@ -16,7 +16,7 @@ datasources:
     withCredentials: false
     isDefault: false
     jsonData:
-      defaultBucket: IRIS_SQL_STATS
+      defaultBucket: ${BUCKET_NAME}
       httpMode: POST
       organization: ${INFLUX_ORG}
       version: Flux

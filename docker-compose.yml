@@ -11,7 +11,6 @@ services:
       - 53773
     volumes:
       - ./:/home/irisowner/dev
-    
     # Put your timezone here (available list code here https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
     environment:
       - TZ=${TZ:-Europe/Paris}
@@ -23,6 +22,7 @@ services:
       - GF_INSTALL_PLUGINS=yesoreyeram-infinity-datasource
       - GRAFANA_INFLUX_API_KEY=${GRAFANA_INFLUX_API_KEY}
       - INFLUX_ORG=${INFLUX_ORG}
+      - BUCKET_NAME=${BUCKET_NAME:-IRIS_SQL_STATS}
     ports:
       - 3000:3000
     volumes:
@@ -45,9 +45,9 @@ services:
     environment:
       - DOCKER_INFLUXDB_INIT_MODE=setup
       - DOCKER_INFLUXDB_INIT_USERNAME=admin
-      - DOCKER_INFLUXDB_INIT_PASSWORD=${DOCKER_INFLUXDB_INIT_PASSWORD:-sysadmin}
-      - DOCKER_INFLUXDB_INIT_ORG=${INFLUX_ORG:-dc}
-      - DOCKER_INFLUXDB_INIT_BUCKET=IRIS_SQL_STATS
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${DOCKER_INFLUXDB_INIT_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUX_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${BUCKET_NAME:-IRIS_SQL_STATS}
       - DOCKER_INFLUXDB_INIT_RETENTION=0
 
   telegraf:
@@ -61,7 +61,8 @@ services:
       - ./telegraf/err:/etc/telegraf/err
     environment:
       - INFLUX_TOKEN=${TELEGRAF_INFLUX_API_KEY}
-      - INFLUX_ORG=${INFLUX_ORG:-dc}
+      - INFLUX_ORG=${INFLUX_ORG}
+      - BUCKET_NAME=${BUCKET_NAME:-IRIS_SQL_STATS}
       - IRIS_USER=${IRIS_USER}
       - IRIS_PASSWORD=${IRIS_PASSWORD}
     depends_on:
@@ -78,3 +79,5 @@ services:
   #   volumes:
   #     - ./grafana-provisioning/datasources:/etc/grafana/provisioning/datasources
   #     - ./grafana-provisioning/dashboards:/etc/grafana/provisioning/dashboards
+
+  
