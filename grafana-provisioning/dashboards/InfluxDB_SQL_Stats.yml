@@ -19,6 +19,6 @@ providers:
     allowUiUpdates: true
     options:
       # <string, required> path to dashboard files on disk. Required when using the 'file' type
-      path: /etc/grafana/provisioning/dashboards/InfluxDB_SQL_Stats_Daily.json
+      path: /etc/grafana/provisioning/dashboards/InfluxDB_SQL_Stats.json
       # <bool> use folder names from filesystem to create folders in Grafana
       foldersFromFilesStructure: false

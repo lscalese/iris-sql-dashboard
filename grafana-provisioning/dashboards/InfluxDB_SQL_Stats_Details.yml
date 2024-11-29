@@ -2,7 +2,7 @@ apiVersion: 1
 
 providers:
   # <string> an unique provider name. Required
-  - name: 'influxdb_sql_stats_hourly_details'
+  - name: 'influxdb_sql_stats_details'
     # <int> Org id. Default to 1
     orgId: 1
     # <string> name of the dashboard folder.
@@ -19,6 +19,6 @@ providers:
     allowUiUpdates: true
     options:
       # <string, required> path to dashboard files on disk. Required when using the 'file' type
-      path: /etc/grafana/provisioning/dashboards/InfluxDB_SQL_Stats_Hourly_Details.json
+      path: /etc/grafana/provisioning/dashboards/InfluxDB_SQL_Stats_Details.json
       # <bool> use folder names from filesystem to create folders in Grafana
       foldersFromFilesStructure: false

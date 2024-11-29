@@ -69,7 +69,7 @@ ClassMethod GetListNamespaces() As %List
     Return list
 }
 
-ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", namespaces As %List = {..GetListNamespaces()}, split As %Boolean = {$$$NO}, splitSize As %Integer = 1000) As %Status
+ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", namespaces As %List = {..GetListNamespaces()}, split As %Boolean = {$$$NO}, splitSize As %Integer = 10000) As %Status
 {
 
     Set directory = ##class(%File).GetDirectory(fileName)
@@ -124,7 +124,7 @@ ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb
     Return sc
 }
 
-ClassMethod SplitInluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", splitSize As %Integer = 1000) As %Status
+ClassMethod SplitInluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", splitSize As %Integer = 10000) As %Status
 {
     Set sc = $$$OK
 

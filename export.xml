@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-26 10:10:05">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-29 16:21:55">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67170,31774.743035905</TimeChanged>
-<TimeCreated>67170,31774.743035905</TimeCreated>
+<TimeChanged>67170,66372.998620476</TimeChanged>
+<TimeCreated>67170,66372.998620476</TimeCreated>
 
 <Method name="GetDailyStats">
 <ClassMethod>1</ClassMethod>
@@ -211,8 +211,8 @@
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67170,31774.744335874</TimeChanged>
-<TimeCreated>67170,31774.744335874</TimeCreated>
+<TimeChanged>67170,66372.998492585</TimeChanged>
+<TimeCreated>67170,66372.998492585</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -244,8 +244,8 @@ The namespace used to retrieve sql stats</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67170,31774.745941875</TimeChanged>
-<TimeCreated>67170,31774.745941875</TimeCreated>
+<TimeChanged>67170,66372.998713774</TimeChanged>
+<TimeCreated>67170,66372.998713774</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -345,8 +345,8 @@ daily or hourly</Description>
 curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
  --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
 <Super>%SYS.Task.Definition</Super>
-<TimeChanged>67170,31774.772896043</TimeChanged>
-<TimeCreated>67170,31774.772896043</TimeCreated>
+<TimeChanged>67170,66372.999796265</TimeChanged>
+<TimeCreated>67170,66372.999796265</TimeCreated>
 
 <Parameter name="TaskName">
 <Default>Influx DB - Push SQL Stats</Default>
@@ -587,8 +587,8 @@ It should be set to true for an on demand task.</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67170,35795.409827569</TimeChanged>
-<TimeCreated>67170,31774.785337733</TimeCreated>
+<TimeChanged>67173,58884.904437159</TimeChanged>
+<TimeCreated>67170,66373.012458525</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -843,8 +843,8 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67170,31774.765587682</TimeChanged>
-<TimeCreated>67170,31774.765587682</TimeCreated>
+<TimeChanged>67170,66372.999729002</TimeChanged>
+<TimeCreated>67170,66372.999729002</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -899,8 +899,8 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67170,36598.835478115</TimeChanged>
-<TimeCreated>67170,31774.791347877</TimeCreated>
+<TimeChanged>67173,58884.907429374</TimeChanged>
+<TimeCreated>67170,66373.005164365</TimeCreated>
 
 <Method name="DailyStats">
 <ClassMethod>1</ClassMethod>
@@ -987,7 +987,7 @@ This method performs the following steps:
 
 <Method name="CreateInfluxFile">
 <ClassMethod>1</ClassMethod>
-<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",namespaces:%List=..GetListNamespaces(),split:%Boolean=$$$NO,splitSize:%Integer=1000</FormalSpec>
+<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",namespaces:%List=..GetListNamespaces(),split:%Boolean=$$$NO,splitSize:%Integer=10000</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
 
@@ -1046,7 +1046,7 @@ This method performs the following steps:
 
 <Method name="SplitInluxFile">
 <ClassMethod>1</ClassMethod>
-<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",splitSize:%Integer=1000</FormalSpec>
+<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",splitSize:%Integer=10000</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
     Set sc = $$$OK

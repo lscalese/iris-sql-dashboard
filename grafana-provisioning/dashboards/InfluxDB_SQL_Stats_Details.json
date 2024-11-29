@@ -19,7 +19,7 @@
   "editable": true,
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
-  "id": 9,
+  "id": 3,
   "links": [],
   "panels": [
     {
@@ -291,7 +291,7 @@
             "uid": "ee4i5j5gjmpz4e"
           },
           "hide": false,
-          "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"sqlstats_daily\" \r\n    and r.instance_name == \"${iris_instance_name}\" \r\n    and r.server_name == \"${iris_server_name}\" \r\n    and r.namespace == \"${iris_namespace}\"\r\n  )\r\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n  |> keep(columns: [\"_time\", \"count\", \"commands\", \"execution_time\", \"row_count\", \"statement\", \"hash\"])\r\n  |> filter(fn: (r) => r.hash == \"${iris_sql_hash}\")\r\n",
+          "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" \r\n    and r.instance_name == \"${iris_instance_name}\" \r\n    and r.server_name == \"${iris_server_name}\" \r\n    and r.namespace == \"${iris_namespace}\"\r\n  )\r\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n  |> keep(columns: [\"_time\", \"count\", \"commands\", \"execution_time\", \"row_count\", \"statement\", \"hash\"])\r\n  |> filter(fn: (r) => r.hash == \"${iris_sql_hash}\")\r\n",
           "refId": "A"
         }
       ],
@@ -651,6 +651,17 @@
               }
             }
           }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date_time"
+              }
+            ]
+          }
         }
       ],
       "type": "timeseries"
@@ -801,6 +812,17 @@
                 "operation": "aggregate"
               }
             }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date_time"
+              }
+            ]
           }
         }
       ],
@@ -1019,6 +1041,17 @@
               }
             }
           }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date_time"
+              }
+            ]
+          }
         }
       ],
       "type": "timeseries"
@@ -1156,6 +1189,17 @@
                 "operation": "groupby"
               }
             }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date_time"
+              }
+            ]
           }
         }
       ],
@@ -1301,6 +1345,17 @@
               }
             }
           }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date_time"
+              }
+            ]
+          }
         }
       ],
       "type": "timeseries"
@@ -1437,6 +1492,17 @@
                 "operation": "aggregate"
               }
             }
+          }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date_time"
+              }
+            ]
           }
         }
       ],
@@ -1581,6 +1647,17 @@
               }
             }
           }
+        },
+        {
+          "id": "sortBy",
+          "options": {
+            "fields": {},
+            "sort": [
+              {
+                "field": "date_time"
+              }
+            ]
+          }
         }
       ],
       "type": "timeseries"
@@ -1593,20 +1670,42 @@
     "list": [
       {
         "current": {
-          "text": "F7C94FA8E117",
-          "value": "F7C94FA8E117"
+          "text": "sqlstats_daily",
+          "value": "sqlstats_daily"
+        },
+        "label": "Stats",
+        "name": "measurement",
+        "options": [
+          {
+            "selected": true,
+            "text": "Daily",
+            "value": "sqlstats_daily"
+          },
+          {
+            "selected": false,
+            "text": "Hourly",
+            "value": "sqlstats_hourly"
+          }
+        ],
+        "query": "Daily : sqlstats_daily, Hourly : sqlstats_hourly",
+        "type": "custom"
+      },
+      {
+        "current": {
+          "text": "1EB507B3F74A",
+          "value": "1EB507B3F74A"
         },
         "datasource": {
           "type": "influxdb",
           "uid": "ee4i5j5gjmpz4e"
         },
-        "definition": "from(bucket:\"IRIS_SQL_STATS\")\r\n |> range(start: $__from/1000, stop: $__to/1000)\r\n |> keep(columns: [\"server_name\"])\r\n |> unique(column: \"server_name\")\r\n",
+        "definition": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\r\n  |> keep(columns: [\"server_name\"])\r\n  |> unique(column: \"server_name\")\r\n",
         "description": "",
         "label": "Server Name",
         "name": "iris_server_name",
         "options": [],
         "query": {
-          "query": "from(bucket:\"IRIS_SQL_STATS\")\r\n |> range(start: $__from/1000, stop: $__to/1000)\r\n |> keep(columns: [\"server_name\"])\r\n |> unique(column: \"server_name\")\r\n"
+          "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\r\n  |> keep(columns: [\"server_name\"])\r\n  |> unique(column: \"server_name\")\r\n"
         },
         "refresh": 1,
         "regex": "",
@@ -1622,12 +1721,12 @@
           "type": "influxdb",
           "uid": "ee4i5j5gjmpz4e"
         },
-        "definition": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")\r\n",
+        "definition": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\")\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")",
         "label": "Instance",
         "name": "iris_instance_name",
         "options": [],
         "query": {
-          "query": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")\r\n"
+          "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\")\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")"
         },
         "refresh": 1,
         "regex": "",
@@ -1642,12 +1741,12 @@
           "type": "influxdb",
           "uid": "ee4i5j5gjmpz4e"
         },
-        "definition": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")\r\n",
+        "definition": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\" and r.instance_name == \"${iris_instance_name}\")\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")",
         "label": "NameSpace",
         "name": "iris_namespace",
         "options": [],
         "query": {
-          "query": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")\r\n"
+          "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\" and r.instance_name == \"${iris_instance_name}\")\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")"
         },
         "refresh": 1,
         "regex": "",
@@ -1655,8 +1754,8 @@
       },
       {
         "current": {
-          "text": "",
-          "value": ""
+          "text": "u1LVD0F/4qmxFGoOmVxj7U5qFUQ=",
+          "value": "u1LVD0F/4qmxFGoOmVxj7U5qFUQ="
         },
         "description": "If you want to filter on a specific SQL fill this field with the sql hash.  ",
         "label": "SQL Hash",
@@ -1664,22 +1763,21 @@
         "options": [
           {
             "selected": true,
-            "text": "",
-            "value": ""
+            "text": "u1LVD0F/4qmxFGoOmVxj7U5qFUQ=",
+            "value": "u1LVD0F/4qmxFGoOmVxj7U5qFUQ="
           }
         ],
-        "query": "",
+        "query": "u1LVD0F/4qmxFGoOmVxj7U5qFUQ=",
         "type": "textbox"
       }
     ]
   },
   "time": {
-    "from": "now-30d",
+    "from": "now-2d",
     "to": "now"
   },
   "timepicker": {
     "refresh_intervals": [
-      "1m",
       "5m",
       "15m",
       "30m",
@@ -1689,8 +1787,8 @@
     ]
   },
   "timezone": "browser",
-  "title": "InfluxDB - SQL Daily Stats Details",
+  "title": "InfluxDB - SQL Stats Details",
   "uid": "de4jrgukhnym8c",
-  "version": 5,
+  "version": 2,
   "weekStart": ""
 }

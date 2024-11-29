@@ -9,3 +9,11 @@ telegraf/err/
 telegraf/in/
 telegraf/archives/
 influxdb-lines.txt
+article-fr.md
+
+# Ignorer tous les fichiers dans telegraf/config/
+telegraf/config/*
+
+# Ne pas ignorer les fichiers spécifiques
+!telegraf/config/telegraf-directory-scan.conf
+!telegraf/config/telegraf-iris.conf

@@ -18,7 +18,7 @@
     "editable": true,
     "fiscalYearStartMonth": 0,
     "graphTooltip": 0,
-    "id": 7,
+    "id": 2,
     "links": [],
     "panels": [
       {
@@ -100,7 +100,7 @@
               "properties": [
                 {
                   "id": "custom.width",
-                  "value": 97
+                  "value": 100
                 }
               ]
             },
@@ -124,7 +124,7 @@
               "properties": [
                 {
                   "id": "custom.width",
-                  "value": 123
+                  "value": 180
                 }
               ]
             },
@@ -148,7 +148,7 @@
               "properties": [
                 {
                   "id": "custom.width",
-                  "value": 145
+                  "value": 180
                 },
                 {
                   "id": "unit",
@@ -164,7 +164,7 @@
               "properties": [
                 {
                   "id": "custom.width",
-                  "value": 108
+                  "value": 180
                 }
               ]
             },
@@ -220,15 +220,15 @@
               "properties": [
                 {
                   "id": "custom.width",
-                  "value": 266
+                  "value": 292
                 },
                 {
                   "id": "links",
                   "value": [
                     {
                       "targetBlank": true,
-                      "title": "Show Details",
-                      "url": "/d/de4jow8478e0wd/influxdb-sql-hourly-stats-details?from=${__from}&to=${__to}&${iris_server_name:queryparam}&${iris_instance_name:queryparam}&${iris_namespace:queryparam}&var-iris_sql_hash=${__data.fields.hash:percentencode}"
+                      "title": "Show Daily Details",
+                      "url": "/d/de4jrgukhnym8c/influxdb-sql-daily-stats-details?from=${__from}﻿&to=﻿${__to}﻿&﻿${iris_server_name:queryparam}﻿&﻿${iris_instance_name:queryparam}﻿&﻿${iris_namespace:queryparam}﻿&var-iris_sql_hash=﻿${__data.fields.hash:percentencode}﻿&${measurement:queryparam}"
                     }
                   ]
                 }
@@ -249,7 +249,7 @@
               "properties": [
                 {
                   "id": "custom.width",
-                  "value": 223
+                  "value": 190
                 }
               ]
             }
@@ -281,8 +281,8 @@
           "showHeader": true,
           "sortBy": [
             {
-              "desc": true,
-              "displayName": "execution_time"
+              "desc": false,
+              "displayName": "date_time"
             }
           ]
         },
@@ -294,11 +294,11 @@
               "uid": "ee4i5j5gjmpz4e"
             },
             "hide": false,
-            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"sqlstats_hourly\" \r\n    and r.instance_name == \"${iris_instance_name}\" \r\n    and r.server_name == \"${iris_server_name}\" \r\n    and r.namespace == \"${iris_namespace}\"\r\n  )\r\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n  |> keep(columns: [\"_time\", \"count\", \"commands\", \"execution_time\", \"row_count\", \"statement\", \"hash\"])\r\n  |> filter(fn: (r) => \"${iris_sql_hash}\" == \"\" or r.hash == \"${iris_sql_hash}\")\r\n",
+            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" \r\n    and r.instance_name == \"${iris_instance_name}\" \r\n    and r.server_name == \"${iris_server_name}\" \r\n    and r.namespace == \"${iris_namespace}\"\r\n  )\r\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\r\n  |> keep(columns: [\"_time\", \"count\", \"commands\", \"execution_time\", \"row_count\", \"statement\", \"hash\"])\r\n  |> filter(fn: (r) => \"${iris_sql_hash}\" == \"\" or r.hash == \"${iris_sql_hash}\")\r\n",
             "refId": "A"
           }
         ],
-        "title": "Hourly SQL Stats",
+        "title": "Daily SQL Stats",
         "transformations": [
           {
             "id": "calculateField",
@@ -441,28 +441,155 @@
               "axisColorMode": "text",
               "axisLabel": "",
               "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
+              "fillOpacity": 80,
               "gradientMode": "none",
               "hideFrom": {
                 "legend": false,
                 "tooltip": false,
                 "viz": false
               },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
               "lineWidth": 1,
-              "pointSize": 5,
               "scaleDistribution": {
                 "type": "linear"
               },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": null
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 8,
+          "w": 8,
+          "x": 0,
+          "y": 17
+        },
+        "id": 4,
+        "options": {
+          "barRadius": 0,
+          "barWidth": 0.97,
+          "fullHighlight": false,
+          "groupWidth": 0.7,
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "orientation": "auto",
+          "showValue": "auto",
+          "stacking": "none",
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          },
+          "xTickLabelRotation": 0,
+          "xTickLabelSpacing": 0
+        },
+        "pluginVersion": "11.3.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "datasource",
+              "uid": "-- Dashboard --"
+            },
+            "panelId": 1,
+            "refId": "A",
+            "withTransforms": true
+          }
+        ],
+        "title": "Number Of SQL",
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "avg_commands": true,
+                "avg_execution_time": true,
+                "avg_row_count": true,
+                "commands": true,
+                "execution_time": true,
+                "hash": true,
+                "row_count": true,
+                "statement": true
+              },
+              "includeByName": {},
+              "indexByName": {},
+              "renameByName": {}
+            }
+          },
+          {
+            "id": "groupBy",
+            "options": {
+              "fields": {
+                "count": {
+                  "aggregations": [
+                    "sum"
+                  ],
+                  "operation": "aggregate"
+                },
+                "date_time": {
+                  "aggregations": [],
+                  "operation": "groupby"
+                }
+              }
+            }
+          },
+          {
+            "id": "sortBy",
+            "options": {
+              "fields": {},
+              "sort": [
+                {
+                  "field": "date_time"
+                }
+              ]
+            }
+          }
+        ],
+        "type": "barchart"
+      },
+      {
+        "datasource": {
+          "type": "datasource",
+          "uid": "-- Dashboard --"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "fillOpacity": 80,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "lineWidth": 1,
+              "scaleDistribution": {
+                "type": "linear"
               },
               "thresholdsStyle": {
                 "mode": "off"
@@ -487,23 +614,32 @@
           "overrides": []
         },
         "gridPos": {
-          "h": 10,
+          "h": 8,
           "w": 8,
-          "x": 0,
+          "x": 8,
           "y": 17
         },
         "id": 6,
         "options": {
+          "barRadius": 0,
+          "barWidth": 0.97,
+          "fullHighlight": false,
+          "groupWidth": 0.7,
           "legend": {
             "calcs": [],
             "displayMode": "list",
             "placement": "bottom",
             "showLegend": true
           },
+          "orientation": "auto",
+          "showValue": "auto",
+          "stacking": "none",
           "tooltip": {
             "mode": "single",
             "sort": "none"
-          }
+          },
+          "xTickLabelRotation": 0,
+          "xTickLabelSpacing": 0
         },
         "pluginVersion": "11.3.0",
         "targets": [
@@ -566,9 +702,20 @@
                 }
               }
             }
+          },
+          {
+            "id": "sortBy",
+            "options": {
+              "fields": {},
+              "sort": [
+                {
+                  "field": "date_time"
+                }
+              ]
+            }
           }
         ],
-        "type": "timeseries"
+        "type": "barchart"
       },
       {
         "datasource": {
@@ -586,28 +733,16 @@
               "axisColorMode": "text",
               "axisLabel": "",
               "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
+              "fillOpacity": 80,
               "gradientMode": "none",
               "hideFrom": {
                 "legend": false,
                 "tooltip": false,
                 "viz": false
               },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
               "lineWidth": 1,
-              "pointSize": 5,
               "scaleDistribution": {
                 "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
               },
               "thresholdsStyle": {
                 "mode": "off"
@@ -631,154 +766,32 @@
           "overrides": []
         },
         "gridPos": {
-          "h": 10,
-          "w": 8,
-          "x": 8,
-          "y": 17
-        },
-        "id": 4,
-        "options": {
-          "legend": {
-            "calcs": [],
-            "displayMode": "list",
-            "placement": "bottom",
-            "showLegend": true
-          },
-          "tooltip": {
-            "mode": "single",
-            "sort": "none"
-          }
-        },
-        "pluginVersion": "11.3.0",
-        "targets": [
-          {
-            "datasource": {
-              "type": "datasource",
-              "uid": "-- Dashboard --"
-            },
-            "panelId": 1,
-            "refId": "A",
-            "withTransforms": true
-          }
-        ],
-        "title": "Number Of SQL",
-        "transformations": [
-          {
-            "id": "organize",
-            "options": {
-              "excludeByName": {
-                "avg_commands": true,
-                "avg_execution_time": true,
-                "avg_row_count": true,
-                "commands": true,
-                "execution_time": true,
-                "hash": true,
-                "row_count": true,
-                "statement": true
-              },
-              "includeByName": {},
-              "indexByName": {},
-              "renameByName": {}
-            }
-          },
-          {
-            "id": "groupBy",
-            "options": {
-              "fields": {
-                "count": {
-                  "aggregations": [
-                    "sum"
-                  ],
-                  "operation": "aggregate"
-                },
-                "date_time": {
-                  "aggregations": [],
-                  "operation": "groupby"
-                }
-              }
-            }
-          }
-        ],
-        "type": "timeseries"
-      },
-      {
-        "datasource": {
-          "type": "datasource",
-          "uid": "-- Dashboard --"
-        },
-        "fieldConfig": {
-          "defaults": {
-            "color": {
-              "mode": "palette-classic"
-            },
-            "custom": {
-              "axisBorderShow": false,
-              "axisCenteredZero": false,
-              "axisColorMode": "text",
-              "axisLabel": "",
-              "axisPlacement": "auto",
-              "barAlignment": 0,
-              "barWidthFactor": 0.6,
-              "drawStyle": "line",
-              "fillOpacity": 0,
-              "gradientMode": "none",
-              "hideFrom": {
-                "legend": false,
-                "tooltip": false,
-                "viz": false
-              },
-              "insertNulls": false,
-              "lineInterpolation": "linear",
-              "lineWidth": 1,
-              "pointSize": 5,
-              "scaleDistribution": {
-                "type": "linear"
-              },
-              "showPoints": "auto",
-              "spanNulls": false,
-              "stacking": {
-                "group": "A",
-                "mode": "none"
-              },
-              "thresholdsStyle": {
-                "mode": "off"
-              }
-            },
-            "mappings": [],
-            "thresholds": {
-              "mode": "absolute",
-              "steps": [
-                {
-                  "color": "green",
-                  "value": null
-                },
-                {
-                  "color": "red",
-                  "value": 80
-                }
-              ]
-            }
-          },
-          "overrides": []
-        },
-        "gridPos": {
-          "h": 10,
+          "h": 8,
           "w": 8,
           "x": 16,
           "y": 17
         },
         "id": 5,
         "options": {
+          "barRadius": 0,
+          "barWidth": 0.97,
+          "fullHighlight": false,
+          "groupWidth": 0.7,
           "legend": {
             "calcs": [],
             "displayMode": "list",
             "placement": "bottom",
             "showLegend": true
           },
+          "orientation": "auto",
+          "showValue": "auto",
+          "stacking": "none",
           "tooltip": {
             "mode": "single",
             "sort": "none"
-          }
+          },
+          "xTickLabelRotation": 0,
+          "xTickLabelSpacing": 0
         },
         "pluginVersion": "11.3.0",
         "targets": [
@@ -835,9 +848,201 @@
                 }
               }
             }
+          },
+          {
+            "id": "sortBy",
+            "options": {
+              "fields": {},
+              "sort": [
+                {
+                  "field": "date_time"
+                }
+              ]
+            }
           }
         ],
-        "type": "timeseries"
+        "type": "barchart"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ee4i5j5gjmpz4e"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              }
+            },
+            "mappings": []
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 0,
+          "y": 25
+        },
+        "id": 8,
+        "options": {
+          "displayLabels": [
+            "value"
+          ],
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "showLegend": true
+          },
+          "pieType": "pie",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.3.0",
+        "targets": [
+          {
+            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" \r\n    and r.instance_name == \"${iris_instance_name}\" \r\n    and r.server_name == \"${iris_server_name}\" \r\n  )\r\n  |> filter(fn: (r) => r._field == \"count\")\r\n  |> group(columns: [\"namespace\"])\r\n  |> sum(column: \"_value\")\r\n  |> keep(columns: [\"namespace\", \"_value\"])",
+            "refId": "A"
+          }
+        ],
+        "title": "Number of SQL by namespace for the period",
+        "type": "piechart"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ee4i5j5gjmpz4e"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              }
+            },
+            "mappings": [],
+            "unit": "s"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 8,
+          "y": 25
+        },
+        "id": 7,
+        "options": {
+          "displayLabels": [
+            "value"
+          ],
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "showLegend": true
+          },
+          "pieType": "pie",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.3.0",
+        "targets": [
+          {
+            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" \r\n    and r.instance_name == \"${iris_instance_name}\" \r\n    and r.server_name == \"${iris_server_name}\" \r\n  )\r\n  |> filter(fn: (r) => r._field == \"execution_time\")\r\n  |> group(columns: [\"namespace\"])\r\n  |> sum(column: \"_value\")\r\n  |> keep(columns: [\"namespace\", \"_value\"])",
+            "refId": "A"
+          }
+        ],
+        "title": "Execution Time by namespace for the period",
+        "type": "piechart"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ee4i5j5gjmpz4e"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              }
+            },
+            "mappings": []
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 8,
+          "x": 16,
+          "y": 25
+        },
+        "id": 9,
+        "options": {
+          "displayLabels": [
+            "value"
+          ],
+          "legend": {
+            "displayMode": "table",
+            "placement": "right",
+            "showLegend": true
+          },
+          "pieType": "pie",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "tooltip": {
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "11.3.0",
+        "targets": [
+          {
+            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" \r\n    and r.instance_name == \"${iris_instance_name}\" \r\n    and r.server_name == \"${iris_server_name}\" \r\n  )\r\n  |> filter(fn: (r) => r._field == \"row_count\")\r\n  |> group(columns: [\"namespace\"])\r\n  |> sum(column: \"_value\")\r\n  |> keep(columns: [\"namespace\", \"_value\"])",
+            "refId": "A"
+          }
+        ],
+        "title": "RowCount by namespace for the period",
+        "type": "piechart"
       }
     ],
     "preload": false,
@@ -847,20 +1052,43 @@
       "list": [
         {
           "current": {
-            "text": "F7C94FA8E117",
-            "value": "F7C94FA8E117"
+            "text": "sqlstats_daily",
+            "value": "sqlstats_daily"
+          },
+          "description": "",
+          "label": "Stats",
+          "name": "measurement",
+          "options": [
+            {
+              "selected": true,
+              "text": "Daily",
+              "value": "sqlstats_daily"
+            },
+            {
+              "selected": false,
+              "text": "Hourly",
+              "value": "sqlstats_hourly"
+            }
+          ],
+          "query": "Daily : sqlstats_daily, Hourly : sqlstats_hourly",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "1EB507B3F74A",
+            "value": "1EB507B3F74A"
           },
           "datasource": {
             "type": "influxdb",
             "uid": "ee4i5j5gjmpz4e"
           },
-          "definition": "from(bucket:\"IRIS_SQL_STATS\")\r\n |> range(start: $__from/1000, stop: $__to/1000)\r\n |> keep(columns: [\"server_name\"])\r\n |> unique(column: \"server_name\")\r\n",
+          "definition": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\r\n  |> keep(columns: [\"server_name\"])\r\n  |> unique(column: \"server_name\")\r\n",
           "description": "",
           "label": "Server Name",
           "name": "iris_server_name",
           "options": [],
           "query": {
-            "query": "from(bucket:\"IRIS_SQL_STATS\")\r\n |> range(start: $__from/1000, stop: $__to/1000)\r\n |> keep(columns: [\"server_name\"])\r\n |> unique(column: \"server_name\")\r\n"
+            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\")\r\n  |> keep(columns: [\"server_name\"])\r\n  |> unique(column: \"server_name\")\r\n"
           },
           "refresh": 2,
           "regex": "",
@@ -876,12 +1104,12 @@
             "type": "influxdb",
             "uid": "ee4i5j5gjmpz4e"
           },
-          "definition": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")\r\n",
+          "definition": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\")\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")",
           "label": "Instance",
           "name": "iris_instance_name",
           "options": [],
           "query": {
-            "query": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")\r\n"
+            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\")\r\n  |> keep(columns: [\"instance_name\"])\r\n  |> unique(column: \"instance_name\")"
           },
           "refresh": 2,
           "regex": "",
@@ -897,12 +1125,12 @@
             "type": "influxdb",
             "uid": "ee4i5j5gjmpz4e"
           },
-          "definition": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")\r\n",
+          "definition": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\" and r.instance_name == \"${iris_instance_name}\")\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")",
           "label": "NameSpace",
           "name": "iris_namespace",
           "options": [],
           "query": {
-            "query": "from(bucket:\"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r.server_name == \"${iris_server_name}\" )\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")\r\n"
+            "query": "from(bucket: \"IRIS_SQL_STATS\")\r\n  |> range(start: $__from/1000, stop: $__to/1000)\r\n  |> filter(fn: (r) => r._measurement == \"${measurement}\" and r.server_name == \"${iris_server_name}\" and r.instance_name == \"${iris_instance_name}\")\r\n  |> keep(columns: [\"namespace\"])\r\n  |> unique(column: \"namespace\")"
           },
           "refresh": 2,
           "regex": "",
@@ -935,7 +1163,6 @@
     },
     "timepicker": {
       "refresh_intervals": [
-        "1m",
         "5m",
         "15m",
         "30m",
@@ -945,8 +1172,8 @@
       ]
     },
     "timezone": "browser",
-    "title": "InfluxDB - SQL Hourly Stats",
-    "uid": "ce4jnnabs66tcd",
-    "version": 9,
+    "title": "InfluxDB - SQL Stats",
+    "uid": "de4iwx6i7i39cf",
+    "version": 4,
     "weekStart": ""
   }
