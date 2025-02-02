@@ -13,4 +13,7 @@ Property hash As %String;
 /// The namespace used to retrieve sql stats
 Property namespace As %String;
 
+/// period "daily", "hourly"
+Property period As %String;
+
 }

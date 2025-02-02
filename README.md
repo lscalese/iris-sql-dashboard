@@ -4,6 +4,7 @@ This project is designed to provide an API for collecting and analyzing statisti
 
 
 ## Prerequisites
+
 Make sure you have [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git) and [Docker desktop](https://www.docker.com/products/docker-desktop) installed.
 
 ## Installation 
@@ -45,10 +46,3 @@ Do $SYSTEM.OBJ.Load("<git-directory>/iris-sql-dashboard/export.xml", "ck")
 Do ##class(dc.sqlstats.services.Install).Init()
 ```
 
-
-## Generate a key
-
-If 
-```
-
-```

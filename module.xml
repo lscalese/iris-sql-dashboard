@@ -3,7 +3,7 @@
   <Document name="sql-stats-api.ZPM">
     <Module>
       <Name>sql-stats-api</Name>
-      <Description>API to expose sql stats for InfluxDB, Telegraf using 'line protocol' or in JSON.</Description>
+      <Description>API to expose sql stats for InfluxDB, Telegraf using 'line protocol' or JSON.</Description>
       <Version>0.9.0</Version>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
