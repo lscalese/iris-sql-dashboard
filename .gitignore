@@ -10,6 +10,7 @@ telegraf/in/
 telegraf/archives/
 influxdb-lines.txt
 article-fr.md
+postgres-storage/
 
 # Ignorer tous les fichiers dans telegraf/config/
 telegraf/config/*
