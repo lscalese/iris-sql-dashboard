@@ -65,24 +65,8 @@ services:
       - BUCKET_NAME=${BUCKET_NAME:-IRIS_SQL_STATS}
       - IRIS_USER=${IRIS_USER}
       - IRIS_PASSWORD=${IRIS_PASSWORD}
-      - POSTGRES_USER=${POSTGRES_USER:-telegraf}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-telegraf}
-      - POSTGRES_HOST=${POSTGRES_HOST:-postgres}
     depends_on:
       - influxdb2
-
-  db:
-    image: postgres
-    container_name: postgres
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:-telegraf}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-telegraf}
-    ports:
-      - 5432:5432
-    # volumes:
-    #   - ./postgres-storage:/var/lib/postgresql/data
 
   # grafanatest:
   #   image: grafana/grafana-oss
