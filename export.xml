@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2024-11-29 16:21:55">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-13 21:14:43">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67170,66372.998620476</TimeChanged>
-<TimeCreated>67170,66372.998620476</TimeCreated>
+<TimeChanged>67249,72687.256514907</TimeChanged>
+<TimeCreated>67249,72687.256514907</TimeCreated>
 
 <Method name="GetDailyStats">
 <ClassMethod>1</ClassMethod>
@@ -211,8 +211,8 @@
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67170,66372.998492585</TimeChanged>
-<TimeCreated>67170,66372.998492585</TimeCreated>
+<TimeChanged>67249,72687.243908498</TimeChanged>
+<TimeCreated>67249,72687.243908498</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -237,6 +237,12 @@ The SQL statement hash</Description>
 The namespace used to retrieve sql stats</Description>
 <Type>%String</Type>
 </Property>
+
+<Property name="period">
+<Description>
+period "daily", "hourly"</Description>
+<Type>%String</Type>
+</Property>
 </Class>
 
 
@@ -244,8 +250,8 @@ The namespace used to retrieve sql stats</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67170,66372.998713774</TimeChanged>
-<TimeCreated>67170,66372.998713774</TimeCreated>
+<TimeChanged>67249,72687.247214792</TimeChanged>
+<TimeCreated>67249,72687.247214792</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -345,8 +351,8 @@ daily or hourly</Description>
 curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
  --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
 <Super>%SYS.Task.Definition</Super>
-<TimeChanged>67170,66372.999796265</TimeChanged>
-<TimeCreated>67170,66372.999796265</TimeCreated>
+<TimeChanged>67249,72687.250031452</TimeChanged>
+<TimeCreated>67249,72687.250031452</TimeCreated>
 
 <Parameter name="TaskName">
 <Default>Influx DB - Push SQL Stats</Default>
@@ -587,8 +593,8 @@ It should be set to true for an on demand task.</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67173,58884.904437159</TimeChanged>
-<TimeCreated>67170,66373.012458525</TimeCreated>
+<TimeChanged>67249,72687.253849391</TimeChanged>
+<TimeCreated>67249,72687.253849391</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -843,8 +849,8 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67170,66372.999729002</TimeChanged>
-<TimeCreated>67170,66372.999729002</TimeCreated>
+<TimeChanged>67249,72687.248740974</TimeChanged>
+<TimeCreated>67249,72687.248740974</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -899,8 +905,8 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67173,58884.907429374</TimeChanged>
-<TimeCreated>67170,66373.005164365</TimeCreated>
+<TimeChanged>67249,72687.254630943</TimeChanged>
+<TimeCreated>67249,72687.254630943</TimeCreated>
 
 <Method name="DailyStats">
 <ClassMethod>1</ClassMethod>
