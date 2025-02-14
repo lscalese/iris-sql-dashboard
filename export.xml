@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-13 21:14:43">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-14 15:55:10">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67249,72687.256514907</TimeChanged>
-<TimeCreated>67249,72687.256514907</TimeCreated>
+<TimeChanged>67250,50979.881104569</TimeChanged>
+<TimeCreated>67250,50979.881104569</TimeCreated>
 
 <Method name="GetDailyStats">
 <ClassMethod>1</ClassMethod>
@@ -39,9 +39,9 @@
         ; try to be compatible with older version
         If irisMajorVersion < 2023  {
             ; StatRowCount is not available in older version
-            Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
+            Set sql = $Replace(sql, "t1.StatRowCount", "0 As StatRowCount")
             ; StatCommands is not available in older version
-            Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
+            Set sql = $Replace(sql, "t1.StatCommands", "0 As StatCommands")
         }
         
         
@@ -211,8 +211,8 @@
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67249,72687.243908498</TimeChanged>
-<TimeCreated>67249,72687.243908498</TimeCreated>
+<TimeChanged>67250,50979.900145115</TimeChanged>
+<TimeCreated>67250,50979.900145115</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -250,8 +250,8 @@ period "daily", "hourly"</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67249,72687.247214792</TimeChanged>
-<TimeCreated>67249,72687.247214792</TimeCreated>
+<TimeChanged>67250,50979.88201209</TimeChanged>
+<TimeCreated>67250,50979.88201209</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -351,8 +351,8 @@ daily or hourly</Description>
 curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
  --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
 <Super>%SYS.Task.Definition</Super>
-<TimeChanged>67249,72687.250031452</TimeChanged>
-<TimeCreated>67249,72687.250031452</TimeCreated>
+<TimeChanged>67250,50979.884955655</TimeChanged>
+<TimeCreated>67250,50979.884955655</TimeCreated>
 
 <Parameter name="TaskName">
 <Default>Influx DB - Push SQL Stats</Default>
@@ -593,8 +593,8 @@ It should be set to true for an on demand task.</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67249,72687.253849391</TimeChanged>
-<TimeCreated>67249,72687.253849391</TimeCreated>
+<TimeChanged>67250,50979.892942921</TimeChanged>
+<TimeCreated>67250,50979.892942921</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -849,8 +849,8 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67249,72687.248740974</TimeChanged>
-<TimeCreated>67249,72687.248740974</TimeCreated>
+<TimeChanged>67250,50979.883977154</TimeChanged>
+<TimeCreated>67250,50979.883977154</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -905,8 +905,8 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67249,72687.254630943</TimeChanged>
-<TimeCreated>67249,72687.254630943</TimeCreated>
+<TimeChanged>67250,57255.691145387</TimeChanged>
+<TimeCreated>67250,50979.888724902</TimeCreated>
 
 <Method name="DailyStats">
 <ClassMethod>1</ClassMethod>
@@ -993,9 +993,10 @@ This method performs the following steps:
 
 <Method name="CreateInfluxFile">
 <ClassMethod>1</ClassMethod>
-<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",namespaces:%List=..GetListNamespaces(),split:%Boolean=$$$NO,splitSize:%Integer=10000</FormalSpec>
+<FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",namespaces:%List=..GetListNamespaces(),lastXDays:%Integer=10</FormalSpec>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
+    Set splitSize = 10000, split = $$$YES ; force the split because telegraf does not support large files
 
     Set directory = ##class(%File).GetDirectory(fileName)
     If '##class(%File).Exists(directory) {
@@ -1007,26 +1008,39 @@ This method performs the following steps:
     }
 
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
-    Set filter.from = $ZDateTime("0,0", 3, 1)
-    Set filter.to = $ZDateTime($Horolog, 3, 1)
     
-    Set ptr = 0, stream = ##class(%Stream.FileCharacter).%New()
+    ;Set filter.from = $ZDateTime("0,0", 3, 1)
+    ;Set filter.to = $ZDateTime($Horolog, 3, 1)
+
+    Set dateFrom = $Horolog - lastXDays
+    Set dateTo = $Horolog - 0
+    
+    Set stream = ##class(%Stream.FileCharacter).%New()
     Set stream.StreamFormatWrite = 0
     Set stream.LineTerminator = $Char(10)
 
     Do stream.LinkToFile(fileName)
 
-    While $ListNext(namespaces, ptr, namespace) {
-        Set filter.namespace = namespace
-        Set results = ..DailyStats(filter)
-        Set sc = ..ConvertToLineProtocol(results, .stream)
-        If $$$ISERR(sc) {
-            Return sc
-        }
-        Set results = ..HourlyStats(filter)
-        Set sc = ..ConvertToLineProtocol(results, .stream)
-        If $$$ISERR(sc) {
-            Return sc
+    ; decompose the operation by date and namespace in case of lot of data
+    ; to avoid memory issues ...
+    For currentDate = dateFrom:1:dateTo {
+        Set filter.from = $ZDateTime(currentDate_",0", 3, 1)
+        Set filter.to = $ZDateTime(currentDate_",86399", 3, 1)
+        Set ptr = 0
+        While $ListNext(namespaces, ptr, namespace) {
+            Set filter.namespace = namespace
+            Set results = ..DailyStats(filter)
+            Set sc = ..ConvertToLineProtocol(results, .stream)
+            Kill results
+            If $$$ISERR(sc) {
+                Return sc
+            }
+            Set results = ..HourlyStats(filter)
+            Set sc = ..ConvertToLineProtocol(results, .stream)
+            Kill results
+            If $$$ISERR(sc) {
+                Return sc
+            }
         }
     }
 

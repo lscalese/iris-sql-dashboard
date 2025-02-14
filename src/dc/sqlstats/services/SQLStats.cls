@@ -69,8 +69,9 @@ ClassMethod GetListNamespaces() As %List
     Return list
 }
 
-ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", namespaces As %List = {..GetListNamespaces()}, split As %Boolean = {$$$NO}, splitSize As %Integer = 10000) As %Status
+ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb-lines.txt", namespaces As %List = {..GetListNamespaces()}, lastXDays As %Integer = 10) As %Status
 {
+    Set splitSize = 10000, split = $$$YES ; force the split because telegraf does not support large files
 
     Set directory = ##class(%File).GetDirectory(fileName)
     If '##class(%File).Exists(directory) {
@@ -82,26 +83,39 @@ ClassMethod CreateInfluxFile(fileName As %String = "/home/irisowner/dev/influxdb
     }
 
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
-    Set filter.from = $ZDateTime("0,0", 3, 1)
-    Set filter.to = $ZDateTime($Horolog, 3, 1)
     
-    Set ptr = 0, stream = ##class(%Stream.FileCharacter).%New()
+    ;Set filter.from = $ZDateTime("0,0", 3, 1)
+    ;Set filter.to = $ZDateTime($Horolog, 3, 1)
+
+    Set dateFrom = $Horolog - lastXDays
+    Set dateTo = $Horolog - 0
+    
+    Set stream = ##class(%Stream.FileCharacter).%New()
     Set stream.StreamFormatWrite = 0
     Set stream.LineTerminator = $Char(10)
 
     Do stream.LinkToFile(fileName)
 
-    While $ListNext(namespaces, ptr, namespace) {
-        Set filter.namespace = namespace
-        Set results = ..DailyStats(filter)
-        Set sc = ..ConvertToLineProtocol(results, .stream)
-        If $$$ISERR(sc) {
-            Return sc
-        }
-        Set results = ..HourlyStats(filter)
-        Set sc = ..ConvertToLineProtocol(results, .stream)
-        If $$$ISERR(sc) {
-            Return sc
+    ; decompose the operation by date and namespace in case of lot of data
+    ; to avoid memory issues ...
+    For currentDate = dateFrom:1:dateTo {
+        Set filter.from = $ZDateTime(currentDate_",0", 3, 1)
+        Set filter.to = $ZDateTime(currentDate_",86399", 3, 1)
+        Set ptr = 0
+        While $ListNext(namespaces, ptr, namespace) {
+            Set filter.namespace = namespace
+            Set results = ..DailyStats(filter)
+            Set sc = ..ConvertToLineProtocol(results, .stream)
+            Kill results
+            If $$$ISERR(sc) {
+                Return sc
+            }
+            Set results = ..HourlyStats(filter)
+            Set sc = ..ConvertToLineProtocol(results, .stream)
+            Kill results
+            If $$$ISERR(sc) {
+                Return sc
+            }
         }
     }
 

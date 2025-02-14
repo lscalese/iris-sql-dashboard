@@ -32,9 +32,9 @@ ClassMethod GetDailyStats(filter As dc.sqlstats.dto.FilterStatsDTO, initList As 
         ; try to be compatible with older version
         If irisMajorVersion < 2023  {
             ; StatRowCount is not available in older version
-            Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
+            Set sql = $Replace(sql, "t1.StatRowCount", "0 As StatRowCount")
             ; StatCommands is not available in older version
-            Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
+            Set sql = $Replace(sql, "t1.StatCommands", "0 As StatCommands")
         }
         
         
