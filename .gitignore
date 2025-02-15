@@ -18,3 +18,4 @@ telegraf/config/*
 # Ne pas ignorer les fichiers spécifiques
 !telegraf/config/telegraf-directory-scan.conf
 !telegraf/config/telegraf-iris.conf
+archives/

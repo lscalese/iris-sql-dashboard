@@ -1,23 +1,22 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-14 15:55:10">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-15 18:36:12">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67250,50979.881104569</TimeChanged>
+<TimeChanged>67251,60098.115521926</TimeChanged>
 <TimeCreated>67250,50979.881104569</TimeCreated>
 
-<Method name="GetDailyStats">
+<Method name="FetchDailyStats">
 <ClassMethod>1</ClassMethod>
-<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO,initList:%ListOfObjects=""</FormalSpec>
+<FormalSpec><![CDATA[filter:dc.sqlstats.dto.FilterStatsDTO,limit:%Integer=1000,&atEnd:%Boolean=0,forceNewQuery:%Boolean=$$$NO]]></FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
 <Implementation><![CDATA[
     Set ns = $Namespace
-
-    If $IsObject(initList) {
-        Set stats = initList
-    } Else {
-        Set stats = ##class(%ListOfObjects).%New()
-    }
+    Set stats = ##class(%ListOfObjects).%New()
     
+    If forceNewQuery {
+        Kill %zzTResDailyStats
+    }
+
     Try {
         New $ROLES
         Set $ROLES = "%ALL"
@@ -25,49 +24,28 @@
         If $Namespace '= filter.namespace {
             New $NAMESPACE
             Set $NAMESPACE = filter.namespace
-        }
-
-        Set args($Increment(args)) = $Piece(filter.from, " ", 1)
-        Set args($Increment(args)) = $Piece(filter.to, " ", 1)
-
-        Set sql = "SELECT t1.ID, t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands, t1.StatVariance "
-                    _ "FROM INFORMATION_SCHEMA.STATEMENT_DAILY_STATS t1 "
-                    _ "INNER JOIN INFORMATION_SCHEMA.STATEMENTS t2 ON t1.Statement = t2.Hash "
-                    _ "WHERE t1.Day >= ? AND t1.Day <= ?"
-
-        Set irisMajorVersion = $SYSTEM.Version.GetMajor()
-        ; try to be compatible with older version
-        If irisMajorVersion < 2023  {
-            ; StatRowCount is not available in older version
-            Set sql = $Replace(sql, "t1.StatRowCount", "0 As StatRowCount")
-            ; StatCommands is not available in older version
-            Set sql = $Replace(sql, "t1.StatCommands", "0 As StatCommands")
-        }
-        
-        
-        If filter.hash '= "" {
-            Set sql = sql _ " AND t2.Hash = ?"
-            Set args($Increment(args)) = filter.hash
-        }
-
-        Set tStatement = ##class(%SQL.Statement).%New()
-        Set tStatement.%SelectMode = 1
-        Set tRes = ##class(%SQL.Statement).%ExecDirect(.tStatement, sql, args...)
-
-        If tRes.%SQLCODE < 0 {
-            Set sc = $$$ERROR($$$SQLError, tRes.%SQLCODE, tRes.%Message)
-            $$$ThrowStatus(sc)
         }
 
         Set serverName = ##class(%SYS.System).GetNodeName(), instanceName = ##class(%SYS.System).GetInstanceName()
 
         Kill:$Data(^||tmp.res) ^||tmp.res
-		
-        While tRes.%Next() {
-            ; If we use SQLStatsDTO, we can add package mapping
-            ; Adding package mapping rebuilds all Extent indexes for the namespace            
-            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, tRes.Day_" 00:00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "daily", $Namespace)
+
+        Set tRes = $Get(%zzTResDailyStats)
+        If '$IsObject(tRes) {
+            Do ExecuteDailyQuery
         }
+        
+        Set atEnd = $$$YES
+        While tRes.%Next() {
+            Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, tRes.Day_" 00:00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "daily", $Namespace)
+            
+            Continue:$Increment(countRecord)<limit
+
+            Set atEnd = $$$NO
+            Quit
+        }
+
+        Kill:atEnd %zzTResDailyStats
         
         Set $Namespace = ns
         
@@ -91,26 +69,79 @@
             Kill ^||tmp.res(id)
         }
     } Catch ex {
-        Set sc = ex.AsStatus()
+        Kill %zzTResDailyStats
+        Kill:$Data(^||tmp.res) ^||tmp.res
+
+        $$$ThrowStatus(ex.AsStatus())
+    }
+
+    Return stats
+
+ExecuteDailyQuery
+    Set args($Increment(args)) = $Piece(filter.from, " ", 1)
+    Set args($Increment(args)) = $Piece(filter.to, " ", 1)
+
+    Set sql = "SELECT t1.ID, t2.Hash, t2.Statement, t1.Day, t1.StatCount, t1.StatTotal, t1.StatRowCount, t1.StatCommands, t1.StatVariance "
+                _ "FROM INFORMATION_SCHEMA.STATEMENT_DAILY_STATS t1 "
+                _ "INNER JOIN INFORMATION_SCHEMA.STATEMENTS t2 ON t1.Statement = t2.Hash "
+                _ "WHERE t1.Day >= ? AND t1.Day <= ?"
+
+    Set irisMajorVersion = $SYSTEM.Version.GetMajor()
+    ; try to be compatible with older version
+    If irisMajorVersion < 2023  {
+        ; StatRowCount is not available in older version
+        Set sql = $Replace(sql, "t1.StatRowCount", "0 As StatRowCount")
+        ; StatCommands is not available in older version
+        Set sql = $Replace(sql, "t1.StatCommands", "0 As StatCommands")
+    }
+    
+    
+    If filter.hash '= "" {
+        Set sql = sql _ " AND t2.Hash = ?"
+        Set args($Increment(args)) = filter.hash
+    }
+
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tStatement.%SelectMode = 1
+    Set tRes = ##class(%SQL.Statement).%ExecDirect(.tStatement, sql, args...)
+
+    If tRes.%SQLCODE < 0 {
+        Set sc = $$$ERROR($$$SQLError, tRes.%SQLCODE, tRes.%Message)
         $$$ThrowStatus(sc)
     }
 
-    Quit stats
+    Set %zzTResDailyStats = tRes
+
+    Quit
 ]]></Implementation>
 </Method>
 
-<Method name="GetHourlyStats">
+<Method name="FetchHourlyStats">
+<Description>
+Fetches hourly statistics based on the provided filter and limit.
+
+# Parameters
+- `filter` (dc.sqlstats.dto.FilterStatsDTO): The filter criteria for fetching the statistics.
+- `limit` (%Integer): The maximum number of records to fetch. Default is 1000.
+- `atEnd` (ByRef %Boolean): A reference parameter that indicates if the end of the result set is reached. Default is 0.
+
+# Returns
+- (%ListOfObjects): A list of SQLStatsDTO objects containing the fetched statistics.
+
+# Throws
+- Throws an exception if there is an error during the execution of the SQL query.
+
+# Description
+This method fetches hourly statistics from the `INFORMATION_SCHEMA.STATEMENT_HOURLY_STATS` table based on the provided filter criteria.
+It handles namespace switching, role setting, and temporary result storage. The method also ensures compatibility with older versions of IRIS.
+The fetched statistics are returned as a list of `SQLStatsDTO` objects.</Description>
 <ClassMethod>1</ClassMethod>
-<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO,initList:%ListOfObjects=""</FormalSpec>
+<FormalSpec><![CDATA[filter:dc.sqlstats.dto.FilterStatsDTO,limit:%Integer=1000,&atEnd:%Boolean=0,forceNewQuery:%Boolean=$$$NO]]></FormalSpec>
 <ReturnType>%ListOfObjects</ReturnType>
 <Implementation><![CDATA[
     Set ns = $Namespace
 
-    If $IsObject(initList) {
-        Set stats = initList
-    } Else {
-        Set stats = ##class(%ListOfObjects).%New()
-    }
+    Set stats = ##class(%ListOfObjects).%New()
 
     Try {
         New $ROLES
@@ -121,68 +152,34 @@
             Set $NAMESPACE = filter.namespace
         }
         
-    
-    
-        Set dayStart = $ZDateH($Piece(filter.from, " ", 1), 3)
-        Set dayEnd = $ZDateH($Piece(filter.to, " ", 1), 3)
-
-        Set startHour = +$Extract(filter.from, 12, 13)
-        Set endHour = +$Extract(filter.to, 12, 13)
-
-        Set args($Increment(args)) = dayStart
-        Set args($Increment(args)) = dayStart
-        Set args($Increment(args)) = startHour
-        Set args($Increment(args)) = dayEnd
-        Set args($Increment(args)) = dayEnd
-        Set args($Increment(args)) = endHour
-
-        Set sql = "SELECT ID, Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, StatVariance, Day->Statement->Hash, Day->Statement->Statement "
-                    _ "FROM INFORMATION_SCHEMA.STATEMENT_HOURLY_STATS "
-                    _ "WHERE (Day->Day > ? OR (Day->Day = ? AND ""Hour"" >= ?)) "
-                    _ "AND (Day->Day < ? OR (Day->Day = ? AND ""Hour"" <= ?)) "
-        
-        Set irisMajorVersion = $SYSTEM.Version.GetMajor()
-
-        ; try to be compatible with older version
-        If irisMajorVersion < 2023  {
-            ; StatRowCount is not available in older version
-            Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
-            ; StatCommands is not available in older version
-            Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
-            
-            ; note : the table STATEMENT_DAILY_STATS exists from 2022.1
-            ; so consider this tools works only from 2022.1
-        }
-        
-        If filter.hash '= "" {
-            Set sql = sql _ " AND Day->Statement->Hash = ?"
-            Set args($Increment(args)) = filter.hash
-        }
-        
-        Set tStatement = ##class(%SQL.Statement).%New()
-        Set tStatement.%SelectMode = 0
-        Set tRes = ##class(%SQL.Statement).%ExecDirect(.tStatement, sql, args...)
-
-        If tRes.%SQLCODE < 0 {
-            Set sc = $$$ERROR($$$SQLError, tRes.%SQLCODE, tRes.%Message)
-            $$$ThrowStatus(sc)
-        }
 
         Kill:$Data(^||tmp.res) ^||tmp.res
-		
+        
+        Set tRes = $Get(%zzTResHourlyStats)
+        Do:'$IsObject(tRes) ExecuteHourlyStats
+        
+        Set atEnd = $$$YES
+        
         While tRes.%Next() {
             ; If we use SQLStatsDTO, we can add package mapping
             ; Adding package mapping rebuilds all Extent indexes for the namespace            
             Set ^||tmp.res(tRes.ID)=$lb(tRes.Hash, tRes.Statement, $ZDate(tRes.Day, 3) _ " " _ tRes.Hour _ ":00:00", tRes.StatCount, tRes.StatTotal, tRes.StatCommands, tRes.StatVariance, tRes.StatRowCount, "hourly", $Namespace)
+
+            Continue:$Increment(countRecord)<limit
+
+            Set atEnd = $$$NO
+            Quit
         }
+
+        Kill:atEnd %zzTResHourlyStats
 
         Set $Namespace = ns
 
         Set id = ""
         For  {
-	    	Set id = $Order(^||tmp.res(id), 1, data)
-			Quit:id=""
-			Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
+            Set id = $Order(^||tmp.res(id), 1, data)
+            Quit:id=""
+            Set stat = ##class(dc.sqlstats.dto.SQLStatsDTO).%New()
             Set stat.Id = id
             Set stat.Hash = $ListGet(data, 1)
             Set stat.Statement = $ListGet(data, 2)
@@ -199,11 +196,63 @@
         }
         
     } Catch ex {
-        Set sc = ex.AsStatus()
-        $$$ThrowStatus(sc)
+        Kill %zzTResHourlyStats
+        Kill:$Data(^||tmp.res) ^||tmp.res
+
+        $$$ThrowStatus(ex.AsStatus())
     }
 
     Quit stats
+
+ExecuteHourlyStats
+    Set dayStart = $ZDateH($Piece(filter.from, " ", 1), 3)
+    Set dayEnd = $ZDateH($Piece(filter.to, " ", 1), 3)
+
+    Set startHour = +$Extract(filter.from, 12, 13)
+    Set endHour = +$Extract(filter.to, 12, 13)
+
+    Set args($Increment(args)) = dayStart
+    Set args($Increment(args)) = dayStart
+    Set args($Increment(args)) = startHour
+    Set args($Increment(args)) = dayEnd
+    Set args($Increment(args)) = dayEnd
+    Set args($Increment(args)) = endHour
+
+    Set sql = "SELECT ID, Day->Day, ""Hour"", StatCount, StatTotal, StatRowCount, StatCommands, StatVariance, Day->Statement->Hash, Day->Statement->Statement "
+                _ "FROM INFORMATION_SCHEMA.STATEMENT_HOURLY_STATS "
+                _ "WHERE (Day->Day > ? OR (Day->Day = ? AND ""Hour"" >= ?)) "
+                _ "AND (Day->Day < ? OR (Day->Day = ? AND ""Hour"" <= ?)) "
+    
+    Set irisMajorVersion = $SYSTEM.Version.GetMajor()
+
+    ; try to be compatible with older version
+    If irisMajorVersion < 2023  {
+        ; StatRowCount is not available in older version
+        Set sql = $Replace(sql, "StatRowCount", "0 As StatRowCount")
+        ; StatCommands is not available in older version
+        Set sql = $Replace(sql, "StatCommands", "0 As StatCommands")
+        
+        ; note : the table STATEMENT_DAILY_STATS exists from 2022.1
+        ; so consider this tools works only from 2022.1
+    }
+    
+    If filter.hash '= "" {
+        Set sql = sql _ " AND Day->Statement->Hash = ?"
+        Set args($Increment(args)) = filter.hash
+    }
+    
+    Set tStatement = ##class(%SQL.Statement).%New()
+    Set tStatement.%SelectMode = 0
+    Set tRes = ##class(%SQL.Statement).%ExecDirect(.tStatement, sql, args...)
+
+    If tRes.%SQLCODE < 0 {
+        Set sc = $$$ERROR($$$SQLError, tRes.%SQLCODE, tRes.%Message)
+        $$$ThrowStatus(sc)
+    }
+
+    Set %zzTResHourlyStats = tRes
+
+    Quit
 ]]></Implementation>
 </Method>
 </Class>
@@ -593,7 +642,7 @@ It should be set to true for an on demand task.</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67250,50979.892942921</TimeChanged>
+<TimeChanged>67251,60138.707984834</TimeChanged>
 <TimeCreated>67250,50979.892942921</TimeCreated>
 
 <XData name="UrlMap">
@@ -631,6 +680,8 @@ It should be set to true for an on demand task.</Description>
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
+    Set sc = $$$OK
+
     If $Get(%request.Data("from",1)) = "" {
         Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
         Set from = $Piece(from, " ", 1)
@@ -664,18 +715,17 @@ It should be set to true for an on demand task.</Description>
         Return $$$OK
     }
 
-    
-
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
+    Set filter.period = "daily"
     
     If $Get(%request.Data("namespace",1)) '= "" {
         Set filter.namespace = $ZConvert($Get(%request.Data("namespace",1)), "U")
     }
 
-    Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
+    ;Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
 
     // stats is an array of dc.sqlstats.dto.SQLStatsDTO
     // the reponse look like this:
@@ -699,17 +749,14 @@ It should be set to true for an on demand task.</Description>
     
     If $$$LOWER(%request.GetCgiEnv("HTTP_ACCEPT")) [ "text/plain" {
         Set %response.ContentType = "text/plain"
-        Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results,.gcs)
+        $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "influx"))
         Do gcs.OutputToDevice()
         Return $$$OK
     }
 
     Set %response.ContentType = "application/json"
-    Set stats = ##class(dc.sqlstats.services.SQLStats).ConvertToDynamicArray(results)
-    Set gcs = ##class(%Stream.GlobalCharacter).%New()
-    Do stats.%ToJSON(.gcs)
+    $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "json"))
     Do gcs.OutputToDevice()
-
     Return $$$OK
 ]]></Implementation>
 </Method>
@@ -718,7 +765,7 @@ It should be set to true for an on demand task.</Description>
 <ClassMethod>1</ClassMethod>
 <ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-
+    Set sc = $$$OK
     If $Get(%request.Data("from",1)) = "" {
         Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
     } Else {
@@ -755,11 +802,11 @@ It should be set to true for an on demand task.</Description>
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
+    Set filter.period = "hourly"
+
     If $Get(%request.Data("namespace",1)) '= "" {
        Set filter.namespace = $ZConvert($Get(%request.Data("namespace",1)), "U")
     }
-
-    Set results = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
 
     // stats is an array of dc.sqlstats.dto.SQLStatsDTO
     // the reponse look like this:
@@ -783,15 +830,13 @@ It should be set to true for an on demand task.</Description>
 
     If $$$LOWER(%request.GetCgiEnv("HTTP_ACCEPT")) [ "text/plain" {
         Set %response.ContentType = "text/plain"
-        Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results,.gcs)
+        $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "influx"))
         Do gcs.OutputToDevice()
         Return $$$OK
     }
 
     Set %response.ContentType = "application/json"
-    Set stats = ##class(dc.sqlstats.services.SQLStats).ConvertToDynamicArray(results)
-    Set gcs = ##class(%Stream.GlobalCharacter).%New()
-    Do stats.%ToJSON(.gcs)
+    $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "json"))
     Do gcs.OutputToDevice()
     
     Return $$$OK
@@ -849,7 +894,7 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67250,50979.883977154</TimeChanged>
+<TimeChanged>67251,60384.954318137</TimeChanged>
 <TimeCreated>67250,50979.883977154</TimeCreated>
 
 <Method name="Init">
@@ -895,8 +940,17 @@ This method performs the following steps:
     }
 
     Set $Namespace = ns
-    Do ##class(dc.sqlstats.influxdb.PushStats).CreateOnDemandTask()
 
+    Return sc
+]]></Implementation>
+</Method>
+
+<Method name="GenExportXML">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>exportSourceFile:%String="/home/irisowner/dev/export.xml"</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set sc = $SYSTEM.OBJ.Export("dc.sqlstats.*.CLS",exportSourceFile)
     Return sc
 ]]></Implementation>
 </Method>
@@ -905,73 +959,84 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67250,57255.691145387</TimeChanged>
+<TimeChanged>67251,66863.640480855</TimeChanged>
 <TimeCreated>67250,50979.888724902</TimeCreated>
 
-<Method name="DailyStats">
+<Method name="StatsToStream">
+<Description>
+format: json, influx
+This method generates statistics and writes them to a stream in either InfluxDB line protocol format or JSON format.
+
+@param filter The filter criteria for fetching statistics, represented as a dc.sqlstats.dto.FilterStatsDTO object.
+@param stream The output stream where the statistics will be written. Defaults to a new %Stream.GlobalCharacter instance if not provided.
+@param format The format of the output stream. Can be either "influx" for InfluxDB line protocol or "json" for JSON format. Defaults to "influx".
+
+@return Returns a %Status indicating the success or failure of the operation.</Description>
 <ClassMethod>1</ClassMethod>
-<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
-<ReturnType>%ListOfObjects</ReturnType>
+<FormalSpec><![CDATA[filter:dc.sqlstats.dto.FilterStatsDTO,&stream:%Stream.GlobalCharacter=##class(%Stream.GlobalCharacter).%New(),format:%String="influx"]]></FormalSpec>
+<ReturnType>%Status</ReturnType>
 <Implementation><![CDATA[
-    Set results = ##class(%ListOfObjects).%New()
-    If filter.namespace = "" {
-        Set namespaces = ..GetListNamespaces()
-        Set ptr = 0
-        While $ListNext(namespaces, ptr, namespace) {
-            Set filter.namespace = namespace
-            Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter, .results)
+    Set sc = $$$OK
+
+    Try {
+        Set results = ##class(%ListOfObjects).%New()
+        Set namespaces = $Select(filter.namespace = "": ..GetListNamespaces(), 1:$ListFromString(filter.namespace, ","))
+        
+        Set ptr = 0, first = $$$YES
+
+        If format '= "influx" {
+            Do stream.WriteLine("[")
         }
-        Set filter.namespace = ""
-    } Else {
-        Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetDailyStats(filter)
-    }
-    Return results
-]]></Implementation>
-</Method>
 
-<Method name="HourlyStats">
-<ClassMethod>1</ClassMethod>
-<FormalSpec>filter:dc.sqlstats.dto.FilterStatsDTO</FormalSpec>
-<ReturnType>%ListOfObjects</ReturnType>
-<Implementation><![CDATA[
-    Set resulsts = ##class(%ListOfObjects).%New()
-    If filter.namespace = "" {
-        Set namespaces = ..GetListNamespaces()
-        Set ptr = 0
         While $ListNext(namespaces, ptr, namespace) {
-            Set filter.namespace = namespace
-            Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter, .results)
+            
+            Set filter.namespace = namespace,  atEnd = 0
+
+            While 'atEnd {
+
+                Set results = $Select(filter.period = "hourly": ##class(dc.sqlstats.dao.SQLStatsDAO).FetchHourlyStats(filter, 1000, .atEnd), 1: ##class(dc.sqlstats.dao.SQLStatsDAO).FetchDailyStats(filter, 1000, .atEnd))
+                
+                If format = "influx" {
+                    Do InfluxFormatProcessing
+                    Continue
+                }
+                
+                ; it's JSON
+                Do JSONFormatProcessing      
+            }
         }
-        Set filter.namespace = ""
-    } Else {
-        Set results = ##class(dc.sqlstats.dao.SQLStatsDAO).GetHourlyStats(filter)
+        
+        If format '= "influx" {
+            Do stream.WriteLine("]")
+        }
+
+    } Catch ex {
+        Kill:$Data(%zzTResDailyStats) %zzTResDailyStats
+        Set sc = ex.AsStatus()
     }
-    Return results
-]]></Implementation>
-</Method>
 
-<Method name="ConvertToDynamicArray">
-<ClassMethod>1</ClassMethod>
-<FormalSpec>results:%ListOfObjects,removeItemAfterConvert:%Boolean=$$$YES</FormalSpec>
-<ReturnType>%DynamicArray</ReturnType>
-<Implementation><![CDATA[
-    #dim item As dc.sqlstats.dto.SQLStatsDTO
+    Return sc
 
-    Set array = ##class(%DynamicArray).%New()
+InfluxFormatProcessing
+    $$$TOE(sc,..ConvertToLineProtocol(results, .stream))
+    Quit
+
+JSONFormatProcessing
     Set key = ""
     For  {
         Set item = results.GetNext(.key)
         Quit:key=""
-
-        If item.%IsA("%DynamicObject") {
-            Do array.%Push(item)
+        Do item.%JSONExportToString(.json)
+        
+        If first {
+            Set first = $$$NO
         } Else {
-            Do item.%JSONExportToString(.json)
-            Do array.%Push({}.%FromJSON(json))
+            Do stream.WriteLine(",")
         }
-        Do results.RemoveAt(key)
+
+        Do stream.WriteLine(json)
     }
-    Return array
+    Quit
 ]]></Implementation>
 </Method>
 
@@ -992,6 +1057,20 @@ This method performs the following steps:
 </Method>
 
 <Method name="CreateInfluxFile">
+<Description><![CDATA[
+<summary>
+Creates an InfluxDB line protocol file with SQL statistics data for specified namespaces and time period.
+</summary>
+<param name="fileName">The path to the output file. Default is "/home/irisowner/dev/influxdb-lines.txt".</param>
+<param name="namespaces">A list of namespaces to include in the statistics. Default is the result of GetListNamespaces().</param>
+<param name="lastXDays">The number of days of statistics to include, counting back from today. Default is 10 days.</param>
+<returns>A status object indicating success or failure.</returns>
+<remarks>
+This method generates a file containing SQL statistics in InfluxDB line protocol format. 
+It creates the necessary directory if it does not exist, and deletes any existing file with the same name.
+The statistics are generated for both daily and hourly periods. 
+If the file is too large, it is split into smaller files to accommodate Telegraf's limitations.
+</remarks>]]></Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",namespaces:%List=..GetListNamespaces(),lastXDays:%Integer=10</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -1008,41 +1087,22 @@ This method performs the following steps:
     }
 
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
-    
-    ;Set filter.from = $ZDateTime("0,0", 3, 1)
-    ;Set filter.to = $ZDateTime($Horolog, 3, 1)
 
     Set dateFrom = $Horolog - lastXDays
-    Set dateTo = $Horolog - 0
+    Set filter.from = $ZDateTime(dateFrom_",0", 3, 1)
+    Set filter.to = $ZDateTime($Horolog, 3, 1)
+    Set filter.namespace = $ListToString(namespaces, ",")
     
     Set stream = ##class(%Stream.FileCharacter).%New()
     Set stream.StreamFormatWrite = 0
     Set stream.LineTerminator = $Char(10)
-
     Do stream.LinkToFile(fileName)
+   
+    Set filter.period = "daily"
+    Do ..StatsToStream(filter, .stream, "influx")
 
-    ; decompose the operation by date and namespace in case of lot of data
-    ; to avoid memory issues ...
-    For currentDate = dateFrom:1:dateTo {
-        Set filter.from = $ZDateTime(currentDate_",0", 3, 1)
-        Set filter.to = $ZDateTime(currentDate_",86399", 3, 1)
-        Set ptr = 0
-        While $ListNext(namespaces, ptr, namespace) {
-            Set filter.namespace = namespace
-            Set results = ..DailyStats(filter)
-            Set sc = ..ConvertToLineProtocol(results, .stream)
-            Kill results
-            If $$$ISERR(sc) {
-                Return sc
-            }
-            Set results = ..HourlyStats(filter)
-            Set sc = ..ConvertToLineProtocol(results, .stream)
-            Kill results
-            If $$$ISERR(sc) {
-                Return sc
-            }
-        }
-    }
+    Set filter.period = "hourly"
+    Do ..StatsToStream(filter, .stream, "influx")
 
     Set sc = stream.%Save()
 
@@ -1065,6 +1125,18 @@ This method performs the following steps:
 </Method>
 
 <Method name="SplitInluxFile">
+<Description>
+Splits a large file into smaller files of specified size.
+
+@param fileName The path to the input file to be split. Default is "/home/irisowner/dev/influxdb-lines.txt".
+@param splitSize The number of lines each split file should contain. Default is 10000.
+@return %Status Returns a status indicating success or failure.
+
+@example
+Set status = ##class(dc.sqlstats.services.SQLStats).SplitInluxFile("/path/to/largefile.txt", 5000)
+
+@note The split files will be named by appending a zero-padded number to the original file name.
+      For example, if the original file name is "data.txt", the split files will be named "data.txt.001", "data.txt.002", etc.</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>fileName:%String="/home/irisowner/dev/influxdb-lines.txt",splitSize:%Integer=10000</FormalSpec>
 <ReturnType>%Status</ReturnType>
@@ -1110,7 +1182,13 @@ newSplitFile
 
 <Method name="ConvertToLineProtocol">
 <Description>
-Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(resulsts,.stream)</Description>
+Convert a list of SQL statistics objects to InfluxDB line protocol format and write to a stream.
+
+@param results A list of SQL statistics objects to be converted.
+@param Output A stream to which the converted line protocol data will be written. Defaults to a new %Stream.GlobalCharacter instance.
+@param timeUnit The unit of time to be used for the timestamp in the line protocol. Valid values are "s" (seconds), "ms" (milliseconds), "µs" (microseconds), and "ns" (nanoseconds). Defaults to "ns".
+
+@return A status indicating success or failure of the operation.</Description>
 <ClassMethod>1</ClassMethod>
 <FormalSpec>results:%ListOfObjects,*stream:%Stream.GlobalCharacter=##class(%Stream.GlobalCharacter).%New(),timeUnit:%String="ns"</FormalSpec>
 <ReturnType>%Status</ReturnType>

@@ -29,6 +29,8 @@ ClassMethod Ping() As %Status
 
 ClassMethod Daily() As %Status
 {
+    Set sc = $$$OK
+
     If $Get(%request.Data("from",1)) = "" {
         Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
         Set from = $Piece(from, " ", 1)
@@ -62,18 +64,17 @@ ClassMethod Daily() As %Status
         Return $$$OK
     }
 
-    
-
     Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
+    Set filter.period = "daily"
     
     If $Get(%request.Data("namespace",1)) '= "" {
         Set filter.namespace = $ZConvert($Get(%request.Data("namespace",1)), "U")
     }
 
-    Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
+    ;Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
 
     // stats is an array of dc.sqlstats.dto.SQLStatsDTO
     // the reponse look like this:
@@ -97,23 +98,20 @@ ClassMethod Daily() As %Status
     
     If $$$LOWER(%request.GetCgiEnv("HTTP_ACCEPT")) [ "text/plain" {
         Set %response.ContentType = "text/plain"
-        Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results,.gcs)
+        $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "influx"))
         Do gcs.OutputToDevice()
         Return $$$OK
     }
 
     Set %response.ContentType = "application/json"
-    Set stats = ##class(dc.sqlstats.services.SQLStats).ConvertToDynamicArray(results)
-    Set gcs = ##class(%Stream.GlobalCharacter).%New()
-    Do stats.%ToJSON(.gcs)
+    $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "json"))
     Do gcs.OutputToDevice()
-
     Return $$$OK
 }
 
 ClassMethod Hourly() As %Status
 {
-
+    Set sc = $$$OK
     If $Get(%request.Data("from",1)) = "" {
         Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, $ZDateTime($Horolog, 3, 1))
     } Else {
@@ -150,11 +148,11 @@ ClassMethod Hourly() As %Status
     Set filter.from = from
     Set filter.to = to
     Set filter.hash = hash
+    Set filter.period = "hourly"
+
     If $Get(%request.Data("namespace",1)) '= "" {
        Set filter.namespace = $ZConvert($Get(%request.Data("namespace",1)), "U")
     }
-
-    Set results = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
 
     // stats is an array of dc.sqlstats.dto.SQLStatsDTO
     // the reponse look like this:
@@ -178,15 +176,13 @@ ClassMethod Hourly() As %Status
 
     If $$$LOWER(%request.GetCgiEnv("HTTP_ACCEPT")) [ "text/plain" {
         Set %response.ContentType = "text/plain"
-        Do ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results,.gcs)
+        $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "influx"))
         Do gcs.OutputToDevice()
         Return $$$OK
     }
 
     Set %response.ContentType = "application/json"
-    Set stats = ##class(dc.sqlstats.services.SQLStats).ConvertToDynamicArray(results)
-    Set gcs = ##class(%Stream.GlobalCharacter).%New()
-    Do stats.%ToJSON(.gcs)
+    $$$TOE(sc,##class(dc.sqlstats.services.SQLStats).StatsToStream(filter, .gcs, "json"))
     Do gcs.OutputToDevice()
     
     Return $$$OK

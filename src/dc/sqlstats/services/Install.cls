@@ -41,8 +41,13 @@ ClassMethod Init() As %Status
     }
 
     Set $Namespace = ns
-    Do ##class(dc.sqlstats.influxdb.PushStats).CreateOnDemandTask()
 
+    Return sc
+}
+
+ClassMethod GenExportXML(exportSourceFile As %String = "/home/irisowner/dev/export.xml") As %Status
+{
+    Set sc = $SYSTEM.OBJ.Export("dc.sqlstats.*.CLS",exportSourceFile)
     Return sc
 }
 
