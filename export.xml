@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-15 18:36:12">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-15 20:14:42">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67251,60098.115521926</TimeChanged>
-<TimeCreated>67250,50979.881104569</TimeCreated>
+<TimeChanged>67251,69130.244759975</TimeChanged>
+<TimeCreated>67251,69130.244759975</TimeCreated>
 
 <Method name="FetchDailyStats">
 <ClassMethod>1</ClassMethod>
@@ -260,8 +260,8 @@ ExecuteHourlyStats
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67250,50979.900145115</TimeChanged>
-<TimeCreated>67250,50979.900145115</TimeCreated>
+<TimeChanged>67251,69130.256919298</TimeChanged>
+<TimeCreated>67251,69130.256919298</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -299,8 +299,8 @@ period "daily", "hourly"</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67250,50979.88201209</TimeChanged>
-<TimeCreated>67250,50979.88201209</TimeCreated>
+<TimeChanged>67251,69130.268078345</TimeChanged>
+<TimeCreated>67251,69130.268078345</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -395,255 +395,10 @@ daily or hourly</Description>
 </Class>
 
 
-<Class name="dc.sqlstats.influxdb.PushStats">
-<Description><![CDATA[
-curl -XPOST "localhost:8086/api/v2/write?bucket=db&precision=s&org=dc" \
- --data-raw "mem,host=host1 used_percent=23.43234543 1556896326"]]></Description>
-<Super>%SYS.Task.Definition</Super>
-<TimeChanged>67250,50979.884955655</TimeChanged>
-<TimeCreated>67250,50979.884955655</TimeCreated>
-
-<Parameter name="TaskName">
-<Default>Influx DB - Push SQL Stats</Default>
-</Parameter>
-
-<Parameter name="HistoryTaskName">
-<Default>Influx DB - Push SQL Stats History</Default>
-</Parameter>
-
-<Parameter name="WRITE">
-<Default><![CDATA[/api/v2/write?bucket=${BucketName}&precision=s&org=${Org}]]></Default>
-</Parameter>
-
-<Property name="Host">
-<Description><![CDATA[
-InfluxDB address, <protocol>://<host>:<port>]]></Description>
-<Type>%String</Type>
-<InitialExpression>"http://influxdb2:8086"</InitialExpression>
-<Parameter name="MAXLEN" value="1024"/>
-</Property>
-
-<Property name="BucketName">
-<Description>
-InfluxDB bucket name</Description>
-<Type>%String</Type>
-<InitialExpression>"IRIS_SQL_STATS"</InitialExpression>
-</Property>
-
-<Property name="Org">
-<Description>
-Organization name</Description>
-<Type>%String</Type>
-<InitialExpression>"dc"</InitialExpression>
-<Parameter name="MAXLEN" value="1024"/>
-</Property>
-
-<Property name="Token">
-<Description>
-Influx DB Token
-If you let it empty, it will try to get the token from ^influx("token") global and then environment variable INFLUX_TOKEN</Description>
-<Type>%String</Type>
-<Parameter name="MAXLEN" value="1024"/>
-</Property>
-
-<Property name="SSLConfig">
-<Description>
-If https is used, fill in the SSL configuration name</Description>
-<Type>%String</Type>
-<Parameter name="MAXLEN" value="1024"/>
-</Property>
-
-<Property name="SendHistory">
-<Description>
-If true, it will send the history otherwise it will send the data from the last successful send
-It should be set to true for an on demand task.</Description>
-<Type>%Boolean</Type>
-<InitialExpression>0</InitialExpression>
-</Property>
-
-<Method name="OnTask">
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
-    Set tSc = $$$OK
-    
-    Try {
-        If ..SendHistory || ($Get(^influx("last-to-success")) = "") {
-            Set tSc = ..SendData($ZdateTime("0,0", 3, 1))
-        } Else {
-            Set from = ^influx("last-to-success")
-            Set from = ##class(%SYSTEM.SQL.Functions).DATEADD("hh", -1, from)
-            Set tSc = ..SendData(from)
-        }
-    } Catch ex {
-        Set tSc = ex.AsStatus()
-    }
-
-    Return tSc
-]]></Implementation>
-</Method>
-
-<Method name="CreateOnDemandTask">
-<ClassMethod>1</ClassMethod>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
-	Set sc = $$$OK
-	Return:..getTaskId(,,..#HistoryTaskName)'="" $$$ERROR($$$GeneralError,"Task already exist")
-	Set task = ##class(%SYS.Task).%New()
-	Set task.Name=..#HistoryTaskName
-	Set task.Description="Push SQL Stats History to Influx DB."
-	Set task.NameSpace=$namespace
-	Set task.RunAsUser="_system"
-	Set task.TaskClass=..%ClassName(1)
-	
-	Set task.TimePeriod=5	; On demand
-    
-	
-	Set task.Priority=1
-
-    Set def = ..%New()
-    Set def.SendHistory = 1
-    Do task.AssignSettings(def)
-
-  	Set sc = task.%Save()
-
-	Return sc
-]]></Implementation>
-</Method>
-
-<Method name="getTaskId">
-<ClassMethod>1</ClassMethod>
-<FormalSpec><![CDATA[&sc:%Status=$$$OK,className:%String=..%ClassName(1),name:%String]]></FormalSpec>
-<ReturnType>%String</ReturnType>
-<Implementation><![CDATA[
-	Set id = "", tStatement = ##class(%SQL.Statement).%New()
-
-	$$$ThrowOnError(tStatement.%PrepareClassQuery("%SYS.Task","TaskListDetail"))
-	
-	Set tResult = tStatement.%Execute()
-	
-	While (tResult.%Next(.sc)) {
-		
-		If $$$ISERR(sc) $$$ThrowStatus(sc)
-
-		If tResult.%Get("TaskClass") = className, tResult.%Get("Name") = name {
-			Set id = tResult.%Get("ID")
-			Quit
-		}
-	}
-	Quit id
-]]></Implementation>
-</Method>
-
-<Method name="SendData">
-<FormalSpec>from:%TimeStamp={$ZDateTime(+$Horolog_",0", 3, 1)}</FormalSpec>
-<ReturnType>%Status</ReturnType>
-<Implementation><![CDATA[
-    Set sc = $$$OK
-
-    Set filter = ##class(dc.sqlstats.dto.FilterStatsDTO).%New()
-    Set filter.to = $ZDateTime($Horolog, 3, 1)
-    
-    Set namespaces = ##class(dc.sqlstats.services.SQLStats).GetListNamespaces()
-
-    Set timeUnit = "s"
-
-    Set ptr = 0, stream = ##class(%Stream.GlobalCharacter).%New()
-
-    While $ListNext(namespaces, ptr, namespace) {
-        Set filter.namespace = namespace
-        Set filter.from = from
-        
-        Set results = ##class(dc.sqlstats.services.SQLStats).DailyStats(filter)
-        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
-        
-        If $$$ISERR(sc) {
-            Return sc
-        }
-        
-        Set results = ##class(dc.sqlstats.services.SQLStats).HourlyStats(filter)
-        Set sc = ##class(dc.sqlstats.services.SQLStats).ConvertToLineProtocol(results, .stream, timeUnit)
-        
-        If $$$ISERR(sc) {
-            Return sc
-        }
-
-    }
-
-    If stream.Size = 0 {
-        ; Nothing to send ...
-        Return sc
-    }
-
-    /* 
-    Components is an array like this : 
-    
-    Components("host")="www.intersystems.com"
-    Components("netloc")="user:pass@www.intersystems.com:80"
-    Components("password")="pass"
-    Components("path")="/path/"
-    Components("port")=80
-    Components("scheme")="http"
-    Components("username")="user"
-    */
-    
-    Do ##class(%Net.URLParser).Decompose(..Host, .Components)
-
-    Set httpRequest = ##class(%Net.HttpRequest).%New()
-    Set httpRequest.Server = Components("host")
-    Set httpRequest.Port = Components("port")
-    Set httpRequest.Https = Components("scheme") = "https"
-    
-    If httpRequest.Https {
-        Set httpRequest.SSLConfiguration = ..SSLConfig
-    }
-
-    Set token = ..Token
-    If token = "" {
-        Set token = $Get(^influx("token"))
-    }
-
-    If token = "" {
-        Set token = $System.Util.GetEnviron("INFLUX_TOKEN")
-    }
-
-    Do httpRequest.SetHeader("Authorization", "Token "_ token)
-    Do httpRequest.SetHeader("Content-Type", "text/plain; charset=utf-8")
-    Do httpRequest.EntityBody.CopyFrom(stream)
-
-    Set endPoint = $Replace(..#WRITE, "${BucketName}", ..BucketName)
-    Set endPoint = $Replace(endPoint, "${Org}", ..Org)
-
-    Set sc = httpRequest.Post(endPoint)
-
-    If $$$ISERR(sc) {
-        Set ^influx("last-error") = $ZDateTime($Horolog, 3, 1) _ " - " _ $System.Status.GetErrorText(sc)
-        Return sc
-    }
-
-    Set response = httpRequest.HttpResponse
-
-    Set ^influx("last-status-code") = $ZDateTime($Horolog, 3, 1) _ " " _ response.StatusCode
-
-    If response.StatusCode '= 204 {
-        Set ^influx("last-error") = $ZDateTime($Horolog, 3, 1) _ " - " _ "HTTP response: "_ response.Data.Read()
-        
-        Set sc = $$$ERROR($$$GeneralError, "HTTP response: "_ response.StatusCode)
-
-        Return sc
-    }
-
-    Set ^influx("last-to-success") = filter.to
-
-    Return sc
-]]></Implementation>
-</Method>
-</Class>
-
-
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67251,60138.707984834</TimeChanged>
-<TimeCreated>67250,50979.892942921</TimeCreated>
+<TimeChanged>67251,69130.284061623</TimeChanged>
+<TimeCreated>67251,69130.284061623</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -894,8 +649,8 @@ It should be set to true for an on demand task.</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67251,60384.954318137</TimeChanged>
-<TimeCreated>67250,50979.883977154</TimeCreated>
+<TimeChanged>67251,69130.293769813</TimeChanged>
+<TimeCreated>67251,69130.293769813</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -959,8 +714,8 @@ This method performs the following steps:
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67251,66863.640480855</TimeChanged>
-<TimeCreated>67250,50979.888724902</TimeCreated>
+<TimeChanged>67251,69130.306734148</TimeChanged>
+<TimeCreated>67251,69130.306734148</TimeCreated>
 
 <Method name="StatsToStream">
 <Description>
