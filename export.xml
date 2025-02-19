@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-15 20:14:42">
+<Export generator="IRIS" version="26" zv="IRIS for UNIX (Ubuntu Server LTS for x86-64 Containers) 2024.1.2 (Build 398U)" ts="2025-02-19 20:28:19">
 <Class name="dc.sqlstats.dao.SQLStatsDAO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67251,69130.244759975</TimeChanged>
-<TimeCreated>67251,69130.244759975</TimeCreated>
+<TimeChanged>67255,67381.946678397</TimeChanged>
+<TimeCreated>67255,67381.946678397</TimeCreated>
 
 <Method name="FetchDailyStats">
 <ClassMethod>1</ClassMethod>
@@ -260,8 +260,8 @@ ExecuteHourlyStats
 
 <Class name="dc.sqlstats.dto.FilterStatsDTO">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67251,69130.256919298</TimeChanged>
-<TimeCreated>67251,69130.256919298</TimeCreated>
+<TimeChanged>67255,67381.946085895</TimeChanged>
+<TimeCreated>67255,67381.946085895</TimeCreated>
 
 <Property name="from">
 <Description>
@@ -299,8 +299,8 @@ period "daily", "hourly"</Description>
 <Description>
 this class is used to store the statistics of a SQL statement</Description>
 <Super>%RegisteredObject,%JSON.Adaptor</Super>
-<TimeChanged>67251,69130.268078345</TimeChanged>
-<TimeCreated>67251,69130.268078345</TimeCreated>
+<TimeChanged>67255,67381.946281373</TimeChanged>
+<TimeCreated>67255,67381.946281373</TimeCreated>
 
 <Property name="Statement">
 <Description>
@@ -397,8 +397,8 @@ daily or hourly</Description>
 
 <Class name="dc.sqlstats.rest.Main">
 <Super>%CSP.REST</Super>
-<TimeChanged>67251,69130.284061623</TimeChanged>
-<TimeCreated>67251,69130.284061623</TimeCreated>
+<TimeChanged>67255,67381.953395283</TimeChanged>
+<TimeCreated>67255,67381.953395283</TimeCreated>
 
 <XData name="UrlMap">
 <XMLNamespace>http://www.intersystems.com/urlmap</XMLNamespace>
@@ -649,8 +649,8 @@ daily or hourly</Description>
 
 
 <Class name="dc.sqlstats.services.Install">
-<TimeChanged>67251,69130.293769813</TimeChanged>
-<TimeCreated>67251,69130.293769813</TimeCreated>
+<TimeChanged>67255,72507.848459358</TimeChanged>
+<TimeCreated>67255,67381.947454607</TimeCreated>
 
 <Method name="Init">
 <Description><![CDATA[
@@ -695,7 +695,9 @@ This method performs the following steps:
     }
 
     Set $Namespace = ns
-
+    
+    Set sc = ##class(dc.sqlstats.tasks.ExportSQLStats).CreateOnDemandTask()
+    
     Return sc
 ]]></Implementation>
 </Method>
@@ -709,13 +711,21 @@ This method performs the following steps:
     Return sc
 ]]></Implementation>
 </Method>
+
+<Method name="UpdateFromGitHub">
+<Description>
+copy / paste the lines below to the terminal to update the code from GitHub</Description>
+<ClassMethod>1</ClassMethod>
+<Implementation><![CDATA[    set ns=$namespace,$namespace="%SYS" do ##class(Security.SSLConfigs).Create("ssl") set $namespace=ns,r=##class(%Net.HttpRequest).%New(),r.Server="raw.githubusercontent.com",r.SSLConfiguration="ssl" do r.Get("/lscalese/iris-sql-dashboard/refs/heads/master/export.xml"),$system.OBJ.LoadStream(r.HttpResponse.Data,"c"),##class(dc.sqlstats.services.Install).Init()
+]]></Implementation>
+</Method>
 </Class>
 
 
 <Class name="dc.sqlstats.services.SQLStats">
 <Super>%RegisteredObject</Super>
-<TimeChanged>67251,69130.306734148</TimeChanged>
-<TimeCreated>67251,69130.306734148</TimeCreated>
+<TimeChanged>67255,67381.951252985</TimeChanged>
+<TimeCreated>67255,67381.951252985</TimeCreated>
 
 <Method name="StatsToStream">
 <Description>
@@ -1029,6 +1039,99 @@ Convert a list of SQL statistics objects to InfluxDB line protocol format and wr
     Set escapedFieldValue = $Replace(fieldValue, "\", "\\")
     Set escapedFieldValue = $Replace(escapedFieldValue, """", "\""")
     Return escapedFieldValue
+]]></Implementation>
+</Method>
+</Class>
+
+
+<Class name="dc.sqlstats.tasks.ExportSQLStats">
+<Super>%SYS.Task.Definition</Super>
+<TimeChanged>67255,73600.43929712</TimeChanged>
+<TimeCreated>67255,67381.951930541</TimeCreated>
+
+<Parameter name="TaskName">
+<Default>Export SQL Stats</Default>
+</Parameter>
+
+<Property name="ExportDirectory">
+<Type>%String</Type>
+<InitialExpression>##class(%SYS.System).TempDirectory()</InitialExpression>
+<Parameter name="MAXLEN" value="1024"/>
+</Property>
+
+<Property name="Namespaces">
+<Description>
+leave empty for all namespaces
+otherwise, fill in the namespace name
+you can use comma separated list for multiple namespaces</Description>
+<Type>%String</Type>
+<Parameter name="MAXLEN" value="1024"/>
+</Property>
+
+<Property name="LastXDays">
+<Type>%Integer</Type>
+<InitialExpression>7</InitialExpression>
+</Property>
+
+<Method name="OnTask">
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set tSc = $$$OK
+    
+    Try {
+        Set directory = ##class(%File).NormalizeDirectory(..ExportDirectory)
+        Set fileName = directory _ "sqlstats_" _ $Translate($ZDATETIME($HOROLOG, 3, 1), " :","_") _ ".txt"
+
+        If ..Namespaces '= "" {
+            Set namespaces = $ListFromString(..Namespaces, ",")
+        } Else {
+            Set namespaces = ##class(dc.sqlstats.services.SQLStats).GetListNamespaces()
+        }
+
+        Set tSc = ##class(dc.sqlstats.services.SQLStats).CreateInfluxFile(fileName, namespaces, ..LastXDays)
+
+    } Catch ex {
+        Set tSc = ex.AsStatus()
+    }
+
+    Return tSc
+]]></Implementation>
+</Method>
+
+<Method name="CreateOnDemandTask">
+<ClassMethod>1</ClassMethod>
+<FormalSpec>SkipErrorIfTaskAlreadyExists:%Boolean=$$$YES</FormalSpec>
+<ReturnType>%Status</ReturnType>
+<Implementation><![CDATA[
+    Set sc = $$$OK
+    Set task = ##class(%SYS.Task).%New()
+
+    Set className = ..%ClassName(1)
+    &SQL(SELECT TOP 1 id INTO:taskId FROM %SYS.Task WHERE TaskClass = :className)
+    If SQLCODE = 0 {
+        Return:SkipErrorIfTaskAlreadyExists $$$OK
+        Set sc = $$$ERROR($$$GeneralError, "Task already exists with ID: "_taskId)
+        Return sc
+    }
+
+    Set task.Name = ..#TaskName
+    Set task.Description = "Export SQL Stats in format Line Protocol."
+    Set task.NameSpace = $Namespace
+    Set task.RunAsUser = $USERNAME
+    Set task.TaskClass = ..%ClassName(1)
+    
+    Set task.TimePeriod=5	; On demand
+
+    Set def = ..%New()
+    Do task.AssignSettings(def)
+
+    Set sc = task.%Save()
+
+    If $$$ISERR(sc) {
+        Return sc
+    }
+
+    Return sc
 ]]></Implementation>
 </Method>
 </Class>

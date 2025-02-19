@@ -41,7 +41,9 @@ ClassMethod Init() As %Status
     }
 
     Set $Namespace = ns
-
+    
+    Set sc = ##class(dc.sqlstats.tasks.ExportSQLStats).CreateOnDemandTask()
+    
     Return sc
 }
 
@@ -49,6 +51,12 @@ ClassMethod GenExportXML(exportSourceFile As %String = "/home/irisowner/dev/expo
 {
     Set sc = $SYSTEM.OBJ.Export("dc.sqlstats.*.CLS",exportSourceFile)
     Return sc
+}
+
+/// copy / paste the lines below to the terminal to update the code from GitHub
+ClassMethod UpdateFromGitHub()
+{
+    set ns=$namespace,$namespace="%SYS" do ##class(Security.SSLConfigs).Create("ssl") set $namespace=ns,r=##class(%Net.HttpRequest).%New(),r.Server="raw.githubusercontent.com",r.SSLConfiguration="ssl" do r.Get("/lscalese/iris-sql-dashboard/refs/heads/master/export.xml"),$system.OBJ.LoadStream(r.HttpResponse.Data,"c"),##class(dc.sqlstats.services.Install).Init()
 }
 
 }

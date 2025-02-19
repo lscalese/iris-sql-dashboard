@@ -4,7 +4,7 @@
     <Module>
       <Name>sql-stats-api</Name>
       <Description>API to expose sql stats for InfluxDB, Telegraf using 'line protocol' or JSON.</Description>
-      <Version>1.0.1</Version>
+      <Version>1.1.0</Version>
       <Packaging>module</Packaging>
       <SourcesRoot>src</SourcesRoot>
       <Resource Name="dc.sqlstats.PKG"/>
